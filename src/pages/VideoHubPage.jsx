@@ -129,7 +129,6 @@ export default function VideoHubPage() {
 
       {/* QUICK TEMPLATES & PRESETS */}
       <div className="hub-showcase-section">
-        <h3 className="section-subheading">Trending Video Prompts & Templates</h3>
         <div className="template-grid">
           {[
             {
