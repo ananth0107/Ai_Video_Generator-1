@@ -1,6 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from './Icons';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
+import { renderSceneryScene } from '../utils/sceneryRenderers';
+
+function getSceneryId(video) {
+  if (video.sceneryId) return video.sceneryId;
+  const p = (video.prompt || '').toLowerCase();
+  if (p.includes('aurora') || p.includes('arctic') || p.includes('fjord')) return 'aurora-borealis';
+  if (p.includes('sakura') || p.includes('blossom') || p.includes('pagoda') || p.includes('japan') || p.includes('shrine')) return 'sakura-twilight';
+  if (p.includes('cyber') || p.includes('neon') || p.includes('metropolis') || p.includes('megalopolis') || p.includes('hover') || p.includes('city') || p.includes('rain')) return 'cyberpunk-city';
+  if (p.includes('ocean') || p.includes('wave') || p.includes('beach') || p.includes('sea') || p.includes('tropical')) return 'ocean-waves-sunset';
+  if (p.includes('cosmic') || p.includes('galaxy') || p.includes('nebula') || p.includes('space') || p.includes('interstellar') || p.includes('portal')) return 'cosmic-nebula';
+  if (p.includes('waterfall') || p.includes('rainforest') || p.includes('jungle') || p.includes('moss')) return 'rainforest-waterfall';
+  if (p.includes('autumn') || p.includes('birch') || p.includes('forest') || p.includes('creek') || p.includes('leaves') || p.includes('amber')) return 'autumn-forest';
+  if (p.includes('desert') || p.includes('dune') || p.includes('sahara') || p.includes('sand')) return 'desert-starlight';
+  if (p.includes('cloud') || p.includes('floating') || p.includes('spire') || p.includes('haven') || p.includes('oasis')) return 'floating-cloud-city';
+  return 'golden-sunrise';
+}
 
 export default function VideoPlayer({
   video,
@@ -8,12 +25,16 @@ export default function VideoPlayer({
   onSaveToggle
 }) {
   const { showToast } = useToast();
+  const { t, language } = useLanguage();
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [playbackProgress, setPlaybackProgress] = useState(30); // 0 to 100%
   const [playbackSpeed, setPlaybackSpeed] = useState(1); // 0.5, 1, 1.5, 2
   const [isMuted, setIsMuted] = useState(true);
   const [isLooping, setIsLooping] = useState(true);
+
+  // Download popup toggle state
+  const [isDownloadPopupOpen, setIsDownloadPopupOpen] = useState(false);
 
   // Video Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -24,7 +45,23 @@ export default function VideoPlayer({
   const scrubberWrapRef = useRef(null);
   const isScrubbingRef = useRef(false);
   const playerContainerRef = useRef(null);
+  const downloadPopupRef = useRef(null);
   const imageObjRef = useRef(null);
+
+  // Close download popup on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (downloadPopupRef.current && !downloadPopupRef.current.contains(e.target)) {
+        setIsDownloadPopupOpen(false);
+      }
+    };
+    if (isDownloadPopupOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isDownloadPopupOpen]);
 
   // Load image if it's image-to-video
   useEffect(() => {
@@ -47,7 +84,7 @@ export default function VideoPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Real-time Canvas Neural Video Simulation (Exact timeline duration loop)
+  // Real-time Canvas Neural Video Simulation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -65,19 +102,12 @@ export default function VideoPlayer({
         speed: 0.8 + Math.random() * 2.2,
         size: 1 + Math.random() * 2.5,
         alpha: 0.3 + Math.random() * 0.7,
-        color: ['#60a5fa', '#a78bfa', '#f472b6', '#38bdf8', '#c084fc'][Math.floor(Math.random() * 5)]
+        color: ['#60a5fa', '#a78bfa', '#f472b6', '#38bdf8', '#34d399'][Math.floor(Math.random() * 5)]
       });
     }
 
-    const vehicles = [
-      { x: 100, y: 350, speed: 2.5, color: '#38bdf8', trailLength: 90, yOffset: 0 },
-      { x: 900, y: 420, speed: -2.0, color: '#f43f5e', trailLength: 70, yOffset: 1 },
-      { x: 400, y: 280, speed: 3.4, color: '#818cf8', trailLength: 110, yOffset: 0.5 }
-    ];
-
     let animationFrameId;
     let lastTime = performance.now();
-    const totalDuration = video.duration || 10;
 
     function drawScene(now) {
       const delta = (now - lastTime) / 1000;
@@ -85,7 +115,7 @@ export default function VideoPlayer({
 
       if (isPlaying && !isScrubbingRef.current && delta > 0 && delta < 0.3) {
         setPlaybackProgress((prev) => {
-          const step = ((delta * playbackSpeed) / totalDuration) * 100;
+          const step = delta * playbackSpeed * 10;
           let next = prev + step;
           if (next >= 100) {
             if (isLooping) {
@@ -99,7 +129,7 @@ export default function VideoPlayer({
         });
       }
 
-      const canvasTime = (playbackProgress / 100) * totalDuration;
+      const canvasTime = (playbackProgress / 100) * 12;
       ctx.clearRect(0, 0, width, height);
 
       // RENDER IMAGE-TO-VIDEO ANIMATION
@@ -143,105 +173,18 @@ export default function VideoPlayer({
         ctx.fillStyle = vigGrad;
         ctx.fillRect(0, 0, width, height);
       } else {
-        // RENDER PROMPT-TO-VIDEO (Futuristic Neural Cyberpunk City)
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-        skyGrad.addColorStop(0, '#070814');
-        skyGrad.addColorStop(0.4, '#0f172a');
-        skyGrad.addColorStop(1, '#1e1b4b');
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, width, height);
-
-        const glowGrad = ctx.createRadialGradient(width / 2, height * 0.75, 40, width / 2, height * 0.75, width * 0.65);
-        glowGrad.addColorStop(0, 'rgba(124, 58, 237, 0.5)');
-        glowGrad.addColorStop(0.35, 'rgba(59, 130, 246, 0.3)');
-        glowGrad.addColorStop(0.7, 'rgba(236, 72, 153, 0.15)');
-        glowGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(0, 0, width, height);
-
-        // Skyline
-        ctx.fillStyle = '#0f172a';
-        for (let i = 0; i < 24; i++) {
-          const bx = i * 55;
-          const bw = 48 + (i % 3) * 14;
-          const bh = 220 + Math.sin(i * 1.5) * 80;
-          ctx.fillRect(bx, height - bh, bw, bh);
-
-          ctx.fillStyle = i % 2 === 0 ? 'rgba(147, 197, 253, 0.22)' : 'rgba(216, 180, 254, 0.22)';
-          for (let wy = height - bh + 15; wy < height - 40; wy += 20) {
-            for (let wx = bx + 6; wx < bx + bw - 6; wx += 12) {
-              if (Math.sin(wx + wy + canvasTime * 0.8) > 0.15) {
-                ctx.fillRect(wx, wy, 4, 6);
-              }
-            }
-          }
-          ctx.fillStyle = '#0f172a';
-        }
-
-        // Foreground High Rises
-        for (let i = 0; i < 9; i++) {
-          const bx = i * 150 - 30;
-          const bw = 110;
-          const bh = 340 + Math.cos(i * 2.2) * 120;
-
-          const bGrad = ctx.createLinearGradient(bx, height - bh, bx + bw, height);
-          bGrad.addColorStop(0, '#111827');
-          bGrad.addColorStop(1, '#030712');
-          ctx.fillStyle = bGrad;
-          ctx.fillRect(bx, height - bh, bw, bh);
-
-          ctx.strokeStyle = i % 2 === 0 ? '#38bdf8' : '#c084fc';
-          ctx.lineWidth = 2.5;
-          ctx.shadowColor = i % 2 === 0 ? '#0284c7' : '#9333ea';
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.moveTo(bx, height - bh);
-          ctx.lineTo(bx + bw, height - bh);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(bx + bw / 2, height - bh);
-          ctx.lineTo(bx + bw / 2, height - bh - 40);
-          ctx.stroke();
-
-          const beaconAlpha = 0.5 + Math.sin(canvasTime * 3 + i) * 0.5;
-          ctx.fillStyle = `rgba(239, 68, 68, ${beaconAlpha})`;
-          ctx.beginPath();
-          ctx.arc(bx + bw / 2, height - bh - 42, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.shadowBlur = 0;
-        }
-
-        // Vehicles
-        vehicles.forEach((v) => {
-          const currentX = ((v.x + canvasTime * v.speed * 80) % (width + 300)) - 100;
-          const currentY = v.y + Math.sin(canvasTime * 2 + v.yOffset) * 14;
-
-          const trailGrad = ctx.createLinearGradient(currentX, currentY, currentX - v.speed * v.trailLength * 0.5, currentY);
-          trailGrad.addColorStop(0, v.color);
-          trailGrad.addColorStop(1, 'transparent');
-          ctx.strokeStyle = trailGrad;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(currentX, currentY);
-          ctx.lineTo(currentX - v.speed * v.trailLength * 0.5, currentY);
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(currentX, currentY, 3.2, 0, Math.PI * 2);
-          ctx.fill();
-        });
+        // RENDER DYNAMIC ANIMATED SCENERY PRESET
+        const sceneryId = getSceneryId(video);
+        renderSceneryScene(ctx, width, height, canvasTime, sceneryId, video.aiEnhanced);
       }
 
-      // Particles
+      // Floating Ambient Light Stars & Sparkles
       particles.forEach((p) => {
-        const py = (p.y + canvasTime * p.speed * 120) % height;
-        const px = (p.x + Math.sin(canvasTime + py * 0.01) * 20) % width;
+        const py = (p.y - canvasTime * p.speed * 30 + height) % height;
+        const px = (p.x + Math.sin(canvasTime * 0.8 + py * 0.02) * 15) % width;
 
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.alpha;
+        ctx.globalAlpha = p.alpha * (0.5 + Math.sin(canvasTime * 2 + p.speed) * 0.5);
         ctx.beginPath();
         ctx.arc(px, py, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -278,15 +221,13 @@ export default function VideoPlayer({
       ctx.lineTo(width - margin, height - margin - bracketSize);
       ctx.stroke();
 
-      const curSecInt = Math.min(totalDuration, Math.floor(canvasTime));
-      const curDec = Math.floor((canvasTime % 1) * 10);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.font = '600 13px "Inter", monospace, sans-serif';
-      ctx.fillText(`REC [${totalDuration}.0s] 00:0${curSecInt}.${curDec}`, width - margin - 150, margin + 20);
+      ctx.font = '700 13px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('THAMILI 4K NEURAL ENGINE', width - margin - 190, margin + 20);
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(`AURQO AI Neural Motion • ${totalDuration}.0s HD`, margin + 10, height - margin - 12);
+      ctx.fillText('THAMILI AI VIDEO STUDIO', margin + 10, height - margin - 12);
 
       animationFrameId = requestAnimationFrame(drawScene);
     }
@@ -323,9 +264,7 @@ export default function VideoPlayer({
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const handleStepProgress = (deltaSeconds) => {
-    const total = video.duration || 10;
-    const deltaPercent = (deltaSeconds / total) * 100;
+  const handleStepProgress = (deltaPercent) => {
     setPlaybackProgress((prev) => Math.max(0, Math.min(100, prev + deltaPercent)));
   };
 
@@ -334,60 +273,61 @@ export default function VideoPlayer({
     const currentIndex = speeds.indexOf(playbackSpeed);
     const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
     setPlaybackSpeed(nextSpeed);
-    showToast(`Playback speed: ${nextSpeed}x`, 'Play');
+    showToast(`Speed: ${nextSpeed}x`, 'Play');
   };
 
-  const formatTime = (secs) => {
-    const clamped = Math.max(0, secs);
-    const m = Math.floor(clamped / 60);
-    const s = Math.floor(clamped % 60);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  // Export Video
-  const handleExportVideo = () => {
+  // Export Video Handler (MP4 / WebM / PNG)
+  const handleExport = (format = 'mp4') => {
+    setIsDownloadPopupOpen(false);
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const durationSec = video.duration || 10;
 
-    if (typeof MediaRecorder === 'undefined' || !canvas.captureStream) {
-      showToast('Downloading snapshot frame...', 'Download');
-      const link = document.createElement('a');
-      link.download = `AURQO_AI_${durationSec}s_Video_${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+    if (format === 'png') {
+      try {
+        const link = document.createElement('a');
+        link.download = `THAMILI_Frame_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast(
+          language === 'ta' ? 'ஸ்னாப்ஷாட் PNG பதிவிறக்கப்பட்டது!' : 'Snapshot PNG downloaded!',
+          'Check'
+        );
+      } catch (err) {
+        showToast(
+          language === 'ta' ? 'ஸ்னாப்ஷாட் சேமிக்க முடியவில்லை' : 'Failed to save snapshot',
+          'Trash2'
+        );
+      }
       return;
     }
 
-    setIsExporting(true);
-    setExportProgress(0);
-    showToast(`Recording exact ${durationSec}s HD video...`, 'Video');
-
-    let mimeType = 'video/webm;codecs=vp9';
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = 'video/webm;codecs=vp8';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm';
-        if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
-      }
-    }
-
     try {
+      setIsExporting(true);
+      setExportProgress(10);
+      showToast(
+        language === 'ta'
+          ? `${format.toUpperCase()} வீடியோ ஏற்றுமதி செய்யப்படுகிறது...`
+          : `Exporting ${format.toUpperCase()} video...`,
+        'Download'
+      );
+
       const stream = canvas.captureStream(30);
-      const options = mimeType ? { mimeType } : {};
-      const recorder = new MediaRecorder(stream, options);
+      const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType: mime });
       const chunks = [];
 
       recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunks.push(e.data);
+        if (e.data.size > 0) chunks.push(e.data);
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+        const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `AURQO_AI_${durationSec}s_Video_${Date.now()}.webm`;
+        link.download = `THAMILI_Video_${Date.now()}.${format === 'mp4' ? 'mp4' : 'webm'}`;
         document.body.appendChild(link);
         link.click();
         setTimeout(() => {
@@ -396,7 +336,12 @@ export default function VideoPlayer({
         }, 1000);
         setIsExporting(false);
         setExportProgress(100);
-        showToast(`Exact ${durationSec}-second video exported successfully!`, 'Check');
+        showToast(
+          language === 'ta'
+            ? `வீடியோ (${format.toUpperCase()}) வெற்றிகரமாக பதிவிறக்கப்பட்டது!`
+            : `Video (${format.toUpperCase()}) downloaded!`,
+          'Check'
+        );
       };
 
       setPlaybackProgress(0);
@@ -405,7 +350,7 @@ export default function VideoPlayer({
       recorder.start();
 
       const startTime = performance.now();
-      const totalMs = durationSec * 1000;
+      const totalMs = 3800;
 
       const progressInterval = setInterval(() => {
         const elapsed = performance.now() - startTime;
@@ -420,9 +365,9 @@ export default function VideoPlayer({
     } catch (err) {
       console.error('Export error:', err);
       setIsExporting(false);
-      showToast('Export failed. Downloading snapshot instead.', 'Download');
+      showToast('Snapshot saved as PNG', 'Download');
       const link = document.createElement('a');
-      link.download = `AURQO_AI_${durationSec}s_Video_${Date.now()}.png`;
+      link.download = `THAMILI_Video_${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     }
@@ -441,96 +386,188 @@ export default function VideoPlayer({
 
   if (!video || !video.hasGenerated) return null;
 
+  const aspectClass =
+    video.aspectRatio === '9:16'
+      ? 'aspect-9-16'
+      : video.aspectRatio === '1:1'
+      ? 'aspect-1-1'
+      : 'aspect-16-9';
+
   return (
-    <section className="video-preview-section">
-      <div className="preview-meta-row">
-        <div className="preview-title-wrap">
-          <div className="preview-title-row">
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
-              Generated Video Output
-            </h2>
-            <span className="ready-badge">
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }}></span>
-              Ready
+    <div className="video-player-card">
+      {/* Header Info */}
+      <div className="player-card-header">
+        <div className="player-header-top">
+          <div className="player-title-box">
+            <h2 className="player-title">{t('generatedVideoOutput')}</h2>
+            <span className="player-ready-badge">
+              <span className="ready-dot"></span>
+              {t('ready')}
             </span>
           </div>
-          <p className="preview-prompt-text">"{video.prompt}"</p>
+          <div className="player-tags-group">
+            <span className="player-tag tag-ratio">{video.aspectRatio}</span>
+            <span className="player-tag tag-style">{video.style}</span>
+            {video.aiEnhanced && (
+              <span className="player-tag tag-ai-enhanced" title="AI 4K HDR Quality Enhanced">
+                <Icons.Sparkles />
+                <span>{t('hdrEnhancedTag')}</span>
+              </span>
+            )}
+          </div>
         </div>
-
-        <div className="preview-tags-row">
-          <span className="tag-badge tag-green">⏱️ {video.duration || 10}s Exact Clip</span>
-          <span className="tag-badge tag-gray">{video.aspectRatio}</span>
-          <span className="tag-badge tag-indigo">{video.style}</span>
-        </div>
+        <p className="player-prompt-quote">"{video.prompt}"</p>
       </div>
 
-      {/* Video Canvas Player Container with Complete Playback Controls */}
+      {/* Main Video Frame */}
       <div
         ref={playerContainerRef}
-        className={`video-canvas-container ${
-          video.aspectRatio === '16:9'
-            ? 'aspect-16-9'
-            : video.aspectRatio === '1:1'
-            ? 'aspect-1-1'
-            : 'aspect-9-16'
-        }`}
+        className={`video-display-frame ${aspectClass}`}
       >
         <canvas
           ref={canvasRef}
           onClick={() => setIsPlaying((prev) => !prev)}
           className="canvas-player"
-          title="Click video to toggle playback"
-        ></canvas>
+          title="Click to play/pause (Space)"
+        />
 
-        {/* Top HUD Badge */}
-        <div className="video-hud-badge">
-          <span className="ping-dot"></span>
-          <span>AI VIDEO • EXACT {video.duration || 10}.0s</span>
+        {/* Top-Left HUD Badge */}
+        <div className="video-hud-live-tag">
+          <span className="live-ping"></span>
+          <span>{t('thamiliPreviewBadge')}</span>
+        </div>
+
+        {/* TOP-RIGHT CORNER: DOWNLOAD TOGGLE POPUP BUTTON */}
+        <div className="video-download-corner-wrap" ref={downloadPopupRef}>
+          <button
+            type="button"
+            onClick={() => setIsDownloadPopupOpen((prev) => !prev)}
+            className={`video-download-toggle-btn ${isDownloadPopupOpen ? 'open' : ''}`}
+            title="Download Video Options"
+          >
+            <Icons.Download />
+            <span>{t('download')}</span>
+            <Icons.ChevronDown />
+          </button>
+
+          {/* Download Dropdown Popup */}
+          {isDownloadPopupOpen && (
+            <div className="video-download-popup-menu">
+              <div className="download-popup-header">
+                <span>{t('exportOptions')}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleExport('mp4')}
+                className="popup-menu-item"
+              >
+                <div className="menu-item-icon">
+                  <Icons.Film />
+                </div>
+                <div className="menu-item-text">
+                  <strong>{t('downloadMp4')}</strong>
+                  <span>{t('downloadMp4Sub')}</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport('webm')}
+                className="popup-menu-item"
+              >
+                <div className="menu-item-icon">
+                  <Icons.Video />
+                </div>
+                <div className="menu-item-text">
+                  <strong>{t('downloadWebM')}</strong>
+                  <span>{t('downloadWebMSub')}</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport('png')}
+                className="popup-menu-item"
+              >
+                <div className="menu-item-icon">
+                  <Icons.Image />
+                </div>
+                <div className="menu-item-text">
+                  <strong>{t('downloadPng')}</strong>
+                  <span>{t('downloadPngSub')}</span>
+                </div>
+              </button>
+
+              <div className="popup-menu-divider"></div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  showToast(
+                    language === 'ta'
+                      ? 'வீடியோ இணைப்பு நகலெடுக்கப்பட்டது!'
+                      : 'Share link copied to clipboard!',
+                    'Share2'
+                  );
+                  setIsDownloadPopupOpen(false);
+                }}
+                className="popup-menu-item"
+              >
+                <div className="menu-item-icon">
+                  <Icons.Share2 />
+                </div>
+                <div className="menu-item-text">
+                  <strong>{t('copyLink')}</strong>
+                  <span>{language === 'ta' ? 'உடனடி பகிர்வு' : 'Share instant playback'}</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Center Play Button Overlay (when paused) */}
         {!isPlaying && !isExporting && (
           <div
             onClick={() => setIsPlaying(true)}
-            className="center-play-btn-box"
+            className="video-center-play-overlay"
             title="Play video"
           >
-            <button className="center-play-circle">
+            <div className="play-circle-glow">
               <Icons.Play />
-            </button>
+            </div>
           </div>
         )}
 
-        {/* Exporting Overlay */}
+        {/* Export Progress Modal Overlay inside Video Frame */}
         {isExporting && (
-          <div className="export-overlay">
-            <div className="progress-spinner" style={{ width: '38px', height: '38px' }}>
-              <Icons.Loader />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '3px' }}>
-                Recording & Exporting {video.duration || 10}-Second Video
-              </h3>
-              <p style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)' }}>
-                Capturing high-frame-rate canvas animation ({exportProgress}%)
-              </p>
-            </div>
-            <div className="export-progress-bar">
-              <div className="export-progress-fill" style={{ width: `${exportProgress}%` }}></div>
+          <div className="video-export-overlay">
+            <div className="export-spinner-box">
+              <div className="export-spinner-icon">
+                <Icons.Loader />
+              </div>
+              <h4>{t('renderingVideo')}</h4>
+              <div className="export-progress-track">
+                <div
+                  className="export-progress-fill"
+                  style={{ width: `${exportProgress}%` }}
+                ></div>
+              </div>
+              <span className="export-pct-text">{exportProgress}%</span>
             </div>
           </div>
         )}
 
-        {/* Video Controls Overlay */}
+        {/* Bottom Video Controls Overlay */}
         <div className="video-controls-overlay">
-          {/* Scrubbable Interactive Progress Bar */}
+          {/* Interactive Scrub Bar */}
           <div
             ref={scrubberWrapRef}
-            className="scrubber-wrap"
+            className="video-scrubber-area"
             onMouseDown={handleScrubberMouseDown}
             onTouchStart={handleScrubberSeek}
             onTouchMove={handleScrubberSeek}
-            title="Click or drag to scrub video playback"
+            title="Click or drag to scrub playback"
           >
             <div className="video-scrubber-track">
               <div
@@ -542,83 +579,94 @@ export default function VideoPlayer({
             </div>
           </div>
 
-          {/* Bottom Controls Bar */}
-          <div className="video-controls-buttons">
-            {/* Left: Playback Controls & Timecode */}
-            <div className="ctrl-btn-group">
+          {/* Bottom Buttons Row */}
+          <div className="video-controls-bar">
+            <div className="controls-left-group">
               <button
+                type="button"
                 onClick={() => setIsPlaying((prev) => !prev)}
-                className="ctrl-btn"
+                className="ctrl-icon-btn"
                 title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
               >
                 {isPlaying ? <Icons.Pause /> : <Icons.Play />}
               </button>
 
               <button
-                onClick={() => handleStepProgress(-1)}
-                className="ctrl-btn"
-                title="Step Back 1s"
+                type="button"
+                onClick={() => handleStepProgress(-5)}
+                className="ctrl-icon-btn"
+                title="Step Back 5s"
               >
                 <Icons.SkipBack />
               </button>
 
               <button
-                onClick={() => handleStepProgress(1)}
-                className="ctrl-btn"
-                title="Step Forward 1s"
+                type="button"
+                onClick={() => handleStepProgress(5)}
+                className="ctrl-icon-btn"
+                title="Step Forward 5s"
               >
                 <Icons.SkipForward />
               </button>
 
-              {/* Live Video Timecode Display */}
-              <div className="video-time-display" title="Live Video Timecode">
-                <Icons.Clock />
-                <span>{formatTime((playbackProgress / 100) * (video.duration || 10))}</span>
-                <span style={{ opacity: 0.4 }}>/</span>
-                <span>{formatTime(video.duration || 10)}</span>
-              </div>
-
               <button
+                type="button"
                 onClick={() => {
                   setIsMuted((prev) => !prev);
-                  showToast(isMuted ? 'Audio unmuted' : 'Muted', 'Volume2');
+                  showToast(
+                    isMuted
+                      ? language === 'ta'
+                        ? 'ஒலி இயக்கப்பட்டது'
+                        : 'Audio unmuted'
+                      : language === 'ta'
+                      ? 'ஒலி முடக்கப்பட்டது'
+                      : 'Muted',
+                    'Volume2'
+                  );
                 }}
-                className="ctrl-btn"
+                className="ctrl-icon-btn"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? <Icons.VolumeX /> : <Icons.Volume2 />}
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setIsLooping((prev) => !prev);
-                  showToast(isLooping ? 'Looping disabled' : 'Looping enabled', 'Repeat');
+                  showToast(
+                    isLooping
+                      ? language === 'ta'
+                        ? 'தொடர் சுழற்சி அணைக்கப்பட்டது'
+                        : 'Looping disabled'
+                      : language === 'ta'
+                      ? 'தொடர் சுழற்சி இயக்கப்பட்டது'
+                      : 'Looping enabled',
+                    'Repeat'
+                  );
                 }}
-                className={`ctrl-btn ${isLooping ? 'active-state' : ''}`}
+                className={`ctrl-icon-btn ${isLooping ? 'active' : ''}`}
                 title="Toggle Loop"
               >
                 <Icons.Repeat />
               </button>
             </div>
 
-            {/* Right: Engine Tag, Speed Selector, Fullscreen */}
-            <div className="ctrl-btn-group">
-              <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '11px', fontWeight: '500', marginRight: '6px' }}>
-                AURQO Neural Engine
-              </span>
-
+            <div className="controls-right-group">
               <button
+                type="button"
                 onClick={toggleSpeed}
-                className="speed-pill-btn"
+                className="speed-toggle-btn"
                 title="Change Playback Speed"
               >
                 {playbackSpeed}x
               </button>
 
               <button
+                type="button"
                 onClick={handleFullscreen}
-                className="ctrl-btn"
-                title="Toggle Fullscreen"
+                className="ctrl-icon-btn"
+                title="Fullscreen"
               >
                 <Icons.Maximize />
               </button>
@@ -627,53 +675,51 @@ export default function VideoPlayer({
         </div>
       </div>
 
-      {/* Toolbar Buttons */}
-      <div className="preview-toolbar">
-        <div className="toolbar-group">
+      {/* Bottom Actions Row */}
+      <div className="player-card-footer">
+        <div className="player-actions-left">
           {onRegenerate && (
             <button
+              type="button"
               onClick={onRegenerate}
-              className="tool-btn"
+              className="player-footer-btn"
             >
               <Icons.RotateCw />
-              <span>Regenerate</span>
+              <span>{t('regenerate')}</span>
             </button>
           )}
 
           <button
+            type="button"
             onClick={onSaveToggle}
-            className={`tool-btn ${video.isSaved ? 'saved-active' : ''}`}
+            className={`player-footer-btn ${video.isSaved ? 'saved' : ''}`}
           >
             {video.isSaved ? <Icons.BookmarkCheck /> : <Icons.Bookmark />}
-            <span>{video.isSaved ? 'Saved' : 'Save'}</span>
+            <span>{video.isSaved ? t('saved') : t('save')}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               navigator.clipboard.writeText(window.location.href);
-              showToast('Share link copied to clipboard!', 'Share2');
+              showToast(
+                language === 'ta'
+                  ? 'பகிர்வு இணைப்பு நகலெடுக்கப்பட்டது!'
+                  : 'Share link copied to clipboard!',
+                'Share2'
+              );
             }}
-            className="tool-btn"
+            className="player-footer-btn"
           >
             <Icons.Share2 />
-            <span>Share</span>
+            <span>{t('share')}</span>
           </button>
         </div>
 
-        <button
-          disabled={isExporting}
-          onClick={handleExportVideo}
-          className="download-mp4-btn"
-          title={`Export and download exact ${video.duration || 10}-second video clip`}
-        >
-          <Icons.Download />
-          <span>
-            {isExporting
-              ? `Exporting (${exportProgress}%)...`
-              : `Download ${video.duration || 10}s Video`}
-          </span>
-        </button>
+        <div className="player-engine-tag">
+          <span>{t('neuralEngineTag')}</span>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

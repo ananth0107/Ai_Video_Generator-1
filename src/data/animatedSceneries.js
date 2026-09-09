@@ -1,0 +1,122 @@
+export const animatedSceneries = [
+  {
+    id: 'golden-sunrise',
+    title: 'Golden Mountain Sunrise',
+    tag: '4K Cinematic',
+    icon: '🌅',
+    category: 'Mountain Dawn',
+    prompt: 'A golden sunrise over misty mountain peaks with a glowing horizon, volumetric sun rays, and soaring eagles in 4k cinematic render.',
+    aspectRatio: '16:9',
+    style: 'Cinematic',
+    accentColor: '#f59e0b',
+    thumbGradient: 'linear-gradient(135deg, #1e1b4b, #be185d, #f59e0b)'
+  },
+  {
+    id: 'aurora-borealis',
+    title: 'Ethereal Aurora Borealis',
+    tag: 'Arctic Light',
+    icon: '🌌',
+    category: 'Night Sky',
+    prompt: 'Vibrant emerald green and violet aurora borealis waving across starry arctic skies over snowcapped pine forests and a tranquil reflective fjord.',
+    aspectRatio: '16:9',
+    style: 'Realistic',
+    accentColor: '#10b981',
+    thumbGradient: 'linear-gradient(135deg, #022c22, #059669, #34d399, #7c3aed)'
+  },
+  {
+    id: 'sakura-twilight',
+    title: 'Cherry Blossom Twilight',
+    tag: 'Peaceful Anime',
+    icon: '🌸',
+    category: 'Flora & Zen',
+    prompt: 'Gentle pink sakura petals drifting over a moonlit Japanese shrine pagoda beside a tranquil lotus river in twilight breeze.',
+    aspectRatio: '16:9',
+    style: 'Animation',
+    accentColor: '#ec4899',
+    thumbGradient: 'linear-gradient(135deg, #2e1065, #ec4899, #fbcfe8)'
+  },
+  {
+    id: 'cyberpunk-city',
+    title: 'Neon Cyberpunk Metropolis',
+    tag: 'Sci-Fi 3D',
+    icon: '🏙️',
+    category: 'Cyber City',
+    prompt: 'Flying hover vehicles cruising through neon-lit skyways in heavy rain with glowing volumetric billboard reflections in a cyberpunk megalopolis.',
+    aspectRatio: '16:9',
+    style: '3D',
+    accentColor: '#38bdf8',
+    thumbGradient: 'linear-gradient(135deg, #090d16, #1e1b4b, #3b82f6, #ec4899)'
+  },
+  {
+    id: 'ocean-waves-sunset',
+    title: 'Tropical Ocean Sunset Waves',
+    tag: 'Ocean Calm',
+    icon: '🌊',
+    category: 'Seascape',
+    prompt: 'Rhythmic turquoise ocean waves breaking softly on a warm sandy beach during a pastel pink and orange golden hour sunset with palm tree silhouettes.',
+    aspectRatio: '16:9',
+    style: 'Realistic',
+    accentColor: '#06b6d4',
+    thumbGradient: 'linear-gradient(135deg, #082f49, #0891b2, #fb923c, #fda4af)'
+  },
+  {
+    id: 'cosmic-nebula',
+    title: 'Deep Cosmic Nebula Portal',
+    tag: 'Space Fantasy',
+    icon: '✨',
+    category: 'Deep Space',
+    prompt: 'Swirling interstellar deep space nebula with glowing violet cosmic dust, distant spiral galaxies, and shimmering supernova starlight.',
+    aspectRatio: '16:9',
+    style: '3D',
+    accentColor: '#a855f7',
+    thumbGradient: 'linear-gradient(135deg, #030712, #4c1d95, #9333ea, #38bdf8)'
+  },
+  {
+    id: 'rainforest-waterfall',
+    title: 'Misty Rainforest Waterfall',
+    tag: 'Lush Nature',
+    icon: '💧',
+    category: 'Jungle Mist',
+    prompt: 'Towering cascade waterfall amidst a dense tropical rainforest with glowing emerald moss, dancing fireflies, and sunbeams piercing mist.',
+    aspectRatio: '16:9',
+    style: 'Realistic',
+    accentColor: '#10b981',
+    thumbGradient: 'linear-gradient(135deg, #064e3b, #047857, #10b981, #a7f3d0)'
+  },
+  {
+    id: 'autumn-forest',
+    title: 'Enchanted Autumn Birch Forest',
+    tag: 'Warm Amber',
+    icon: '🍁',
+    category: 'Woodland',
+    prompt: 'Golden amber and ruby maple leaves gracefully falling through sun-drenched birch trees along a babbling crystal forest creek.',
+    aspectRatio: '16:9',
+    style: 'Cinematic',
+    accentColor: '#f97316',
+    thumbGradient: 'linear-gradient(135deg, #451a03, #9a3412, #ea580c, #fbbf24)'
+  },
+  {
+    id: 'desert-starlight',
+    title: 'Sahara Dunes & Starlit Sky',
+    tag: 'Desert Mirage',
+    icon: '🏜️',
+    category: 'Dunes & Stars',
+    prompt: 'Sweeping golden desert sand dunes sculpted by wind transitioning from purple twilight into a brilliant crystalline starry Milky Way.',
+    aspectRatio: '16:9',
+    style: 'Realistic',
+    accentColor: '#fbbf24',
+    thumbGradient: 'linear-gradient(135deg, #1c1917, #78350f, #d97706, #3b82f6)'
+  },
+  {
+    id: 'floating-cloud-city',
+    title: 'Floating Cloud Haven Oasis',
+    tag: 'Dreamy Sky',
+    icon: '☁️',
+    category: 'Celestial Sky',
+    prompt: 'Futuristic celestial glass spires and waterfalls floating gracefully above a sea of fluffy golden sunset clouds in heavenly sunlight.',
+    aspectRatio: '16:9',
+    style: 'Animation',
+    accentColor: '#60a5fa',
+    thumbGradient: 'linear-gradient(135deg, #1e3a8a, #3b82f6, #93c5fd, #fef08a)'
+  }
+];

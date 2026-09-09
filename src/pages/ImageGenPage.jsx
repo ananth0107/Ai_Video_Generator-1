@@ -61,7 +61,7 @@ export default function ImageGenPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe the image in detail..."
-              className="aurqo-textarea"
+              className="thamili-textarea"
             />
           </div>
 

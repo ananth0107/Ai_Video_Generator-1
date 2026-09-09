@@ -1,93 +1,160 @@
-import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Icons } from './Icons';
+import ThamiliBrandLogo from './ThamiliBrandLogo';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 
-export default function Header() {
+export default function Header({ onToggleMobileSidebar = () => {} }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { showToast } = useToast();
+  const { language, setLanguage, t } = useLanguage();
 
-  const getBreadcrumbs = () => {
-    const path = location.pathname.toLowerCase();
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef(null);
 
-    if (path === '/' || path === '/video') {
-      return [{ label: 'AURQO AI Video', to: '/video' }, { label: 'Studio Hub' }];
+  // Close language dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target)) {
+        setIsLangMenuOpen(false);
+      }
+    };
+    if (isLangMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
     }
-    if (path === '/prompt-to-video' || path === '/video/prompt-to-video' || path === '/video/prompt') {
-      return [
-        { label: 'AURQO AI Video', to: '/video' },
-        { label: 'Prompt to Video' }
-      ];
-    }
-    if (path === '/image-to-video' || path === '/video/image-to-video' || path === '/video/image') {
-      return [
-        { label: 'AURQO AI Video', to: '/video' },
-        { label: 'Image to Video' }
-      ];
-    }
-    if (path === '/history') {
-      return [{ label: 'AURQO AI Video', to: '/video' }, { label: 'Generation History' }];
-    }
-    if (path === '/saved') {
-      return [{ label: 'AURQO AI Video', to: '/video' }, { label: 'Saved Collection' }];
-    }
-    if (path === '/settings') {
-      return [{ label: 'AURQO AI Video', to: '/video' }, { label: 'Settings' }];
-    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isLangMenuOpen]);
 
-    const formatted = path.replace('/', '').replace(/-/g, ' ');
-    return [
-      { label: 'AURQO AI Video', to: '/video' },
-      { label: formatted.charAt(0).toUpperCase() + formatted.slice(1) }
-    ];
+  const path = location.pathname.toLowerCase();
+  const isPrompt = path.includes('prompt') || path === '/' || path === '/video';
+  const isImageToVideo = path.includes('image-to-video');
+  const isCharacters = path.includes('characters');
+
+  const getSubBreadcrumb = () => {
+    if (isPrompt && !isImageToVideo) return t('promptToVideoBreadcrumb');
+    if (isImageToVideo) return t('imageToVideoBreadcrumb');
+    if (isCharacters) return t('charactersBreadcrumb');
+    return t('videoStudioBreadcrumb');
   };
 
-  const breadcrumbs = getBreadcrumbs();
+  const handleLanguageSelect = (langCode) => {
+    setLanguage(langCode);
+    setIsLangMenuOpen(false);
+    showToast(
+      langCode === 'ta'
+        ? 'மொழி தமிழுக்கு மாற்றப்பட்டது!'
+        : 'Language switched to English!',
+      'Globe'
+    );
+  };
 
   return (
-    <header className="top-header">
-      <div className="breadcrumbs">
-        {breadcrumbs.map((crumb, idx) => {
-          const isLast = idx === breadcrumbs.length - 1;
-          return (
-            <React.Fragment key={idx}>
-              {idx > 0 && <span className="breadcrumb-divider">/</span>}
-              {crumb.to && !isLast ? (
-                <Link to={crumb.to} className="breadcrumb-root breadcrumb-link">
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span className={isLast ? 'breadcrumb-active' : 'breadcrumb-root'}>
-                  {crumb.label}
-                </span>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      <div className="header-actions">
+    <header className="thamili-top-header">
+      {/* 1. LEFT COLUMN: Mobile Toggle & Breadcrumbs */}
+      <div className="header-left-col">
         <button
           type="button"
-          onClick={() => showToast('Light theme active (matching AURQO design)', 'Sun')}
-          className="icon-btn"
-          title="Toggle theme"
+          className="header-mobile-toggle"
+          onClick={onToggleMobileSidebar}
+          aria-label="Open Sidebar"
+        >
+          <Icons.Menu />
+        </button>
+
+        <div className="header-breadcrumbs">
+          <Link to="/prompt-to-video" className="crumb-main-text">
+            {t('headerTitle')}
+          </Link>
+          <span className="crumb-divider">/</span>
+          <span className="crumb-active-text">{getSubBreadcrumb()}</span>
+        </div>
+      </div>
+
+      {/* 2. CENTER COLUMN: MATHEMATICALLY CENTERED THAMILI LOGO (ONLY LOGO, NO TEXT) */}
+      <div className="header-center-col">
+        <Link to="/prompt-to-video" className="header-center-logo-link" title="THAMILI AI">
+          <ThamiliBrandLogo height={46} />
+        </Link>
+      </div>
+
+      {/* 3. RIGHT COLUMN: Theme, Language Switcher, Sign In, Get Started */}
+      <div className="header-right-col">
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
+          className="header-icon-tool-btn"
+          onClick={() => showToast(language === 'ta' ? 'தீம் மாற்றப்பட்டது' : 'Theme toggled', 'Sun')}
+          title={t('toggleTheme')}
         >
           <Icons.Sun />
         </button>
+
+        {/* Language Switcher Dropdown */}
+        <div className="header-lang-switcher-wrap" ref={langMenuRef}>
+          <button
+            type="button"
+            className={`header-lang-btn ${isLangMenuOpen ? 'open' : ''}`}
+            onClick={() => setIsLangMenuOpen((prev) => !prev)}
+            title={t('langSwitchTitle')}
+            aria-expanded={isLangMenuOpen}
+          >
+            <span className="lang-globe-icon">🌐</span>
+            <span className="lang-active-label">{language === 'ta' ? 'தமிழ்' : 'English'}</span>
+            <span className={`lang-chevron ${isLangMenuOpen ? 'open' : ''}`}>
+              <Icons.ChevronDown />
+            </span>
+          </button>
+
+          {isLangMenuOpen && (
+            <div className="header-lang-dropdown-menu">
+              <button
+                type="button"
+                className={`lang-option-btn ${language === 'en' ? 'active' : ''}`}
+                onClick={() => handleLanguageSelect('en')}
+              >
+                <span className="lang-flag">🇬🇧</span>
+                <span className="lang-opt-name">English</span>
+                {language === 'en' && <span className="lang-check"><Icons.Check /></span>}
+              </button>
+
+              <button
+                type="button"
+                className={`lang-option-btn ${language === 'ta' ? 'active' : ''}`}
+                onClick={() => handleLanguageSelect('ta')}
+              >
+                <span className="lang-flag">🇮🇳</span>
+                <span className="lang-opt-name">தமிழ் Tamil</span>
+                {language === 'ta' && <span className="lang-check"><Icons.Check /></span>}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Sign In */}
         <button
           type="button"
-          onClick={() => showToast('Sign In modal opened', 'Check')}
-          className="sign-in-btn"
+          className="header-signin-btn"
+          onClick={() =>
+            showToast(
+              language === 'ta' ? 'உள்நுழைவு திரை திறக்கப்பட்டது' : 'Sign In modal opened',
+              'Sparkles'
+            )
+          }
         >
-          Sign In
+          {t('signIn')}
         </button>
+
+        {/* Get Started Button */}
         <button
           type="button"
-          onClick={() => showToast('Welcome to AURQO Studio Pro!', 'Sparkles')}
-          className="get-started-btn"
+          className="header-getstarted-btn"
+          onClick={() => navigate('/prompt-to-video')}
         >
-          Get Started
+          {t('getStarted')}
         </button>
       </div>
     </header>

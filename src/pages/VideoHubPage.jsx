@@ -1,61 +1,74 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
+import { useCharacters } from '../context/CharacterContext';
 
 export default function VideoHubPage() {
   const navigate = useNavigate();
+  const { allCharacters, customCharacters } = useCharacters();
 
   return (
-    <div className="view-container">
-      {/* Page Header */}
-      <div className="page-heading">
-        <div className="heading-row">
-          <h1 className="main-title">AI Video Studio</h1>
-          <span className="version-badge">
-            <Icons.Sparkles /> Studio v2.0
-          </span>
+    <div className="hub-page-container">
+      {/* Page Heading & Hero Section */}
+      <div className="hub-heading-section">
+        <div className="hub-header-top-row">
+          <div className="hub-title-row">
+            <h1 className="hub-main-title">THAMILI AI Video Studio</h1>
+            <span className="studio-version-badge">
+              <Icons.Sparkles />
+              <span>Studio v2.5 Ultra</span>
+            </span>
+          </div>
+          <div className="hub-stats-row">
+            <span className="hub-stat-item">✨ 4K HDR Diffusion</span>
+            <span className="hub-stat-sep">•</span>
+            <span className="hub-stat-item">⚡ 60 FPS Keyframes</span>
+            <span className="hub-stat-sep">•</span>
+            <span className="hub-stat-item">👥 {allCharacters.length} Characters ({customCharacters.length} Custom)</span>
+          </div>
         </div>
-        <p className="main-subtitle">
-          Choose a mode below to generate ultra-realistic AI videos with cinematic lighting and camera dynamics.
+        <p className="hub-subtitle-text">
+          Generate cinematic AI videos from text prompts, animate artwork with realistic physics, or create persistent AI character personas.
         </p>
       </div>
 
-      {/* TWO LARGE ACTION CARDS WITH DIRECT ROUTE NAVIGATION */}
-      <div className="cards-grid">
-        {/* CARD 1 — PROMPT TO VIDEO */}
+      {/* Main Studio Cards Grid (3-Card Layout: Prompt, Image, Characters) */}
+      <div className="hub-feature-cards-grid">
+        {/* Card 1: Prompt to Video */}
         <div
           onClick={() => navigate('/prompt-to-video')}
-          className="creation-card"
+          className="feature-card prompt-card"
           role="button"
           tabIndex={0}
         >
-          <div className="card-top-accent accent-blue-purple"></div>
-
-          <div>
-            <div className="card-header">
-              <div className="card-icon-box icon-box-blue">
+          <div className="feature-card-inner-top">
+            <div className="feature-card-header">
+              <div className="feature-icon-circle icon-blue">
                 <Icons.Sparkles />
               </div>
-              <div>
-                <h2 className="card-title">Prompt to Video</h2>
-                <p className="card-desc">
-                  Turn your ideas and text prompts into stunning 4K/HD video sequences.
+              <div className="feature-header-text">
+                <div className="feature-title-row">
+                  <h2 className="feature-title">Prompt to Video</h2>
+                  <span className="feature-badge badge-blue">Text-to-Video</span>
+                </div>
+                <p className="feature-desc">
+                  Transform natural text prompts into stunning 4K cinematic video sequences with custom camera motions and lighting.
                 </p>
               </div>
             </div>
 
-            <div className="card-features-list">
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Exact 5s, 10s & 15s HD video clips</span>
+            <div className="feature-checklist">
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Spatial Vector Prompt Synthesis with AI Enhancer</span>
               </div>
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Cinematic, Realistic, 3D & Anime visual styles</span>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Cinematic, Realistic, 3D Render & Anime Visual Styles</span>
               </div>
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Multi-aspect ratio support (16:9, 9:16, 1:1)</span>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Multi-aspect ratios: 16:9 Landscape, 9:16 Shorts, 1:1</span>
               </div>
             </div>
           </div>
@@ -66,48 +79,48 @@ export default function VideoHubPage() {
               e.stopPropagation();
               navigate('/prompt-to-video');
             }}
-            className="generate-btn"
-            style={{ marginTop: '24px' }}
+            className="feature-action-btn btn-blue-purple"
           >
             <span>Open Prompt to Video</span>
             <Icons.ArrowRight />
           </button>
         </div>
 
-        {/* CARD 2 — IMAGE TO VIDEO */}
+        {/* Card 2: Image to Video */}
         <div
           onClick={() => navigate('/image-to-video')}
-          className="creation-card"
+          className="feature-card image-card"
           role="button"
           tabIndex={0}
         >
-          <div className="card-top-accent accent-purple-pink"></div>
-
-          <div>
-            <div className="card-header">
-              <div className="card-icon-box icon-box-purple">
+          <div className="feature-card-inner-top">
+            <div className="feature-card-header">
+              <div className="feature-icon-circle icon-purple">
                 <Icons.Image />
               </div>
-              <div>
-                <h2 className="card-title">Image to Video</h2>
-                <p className="card-desc">
-                  Bring still photos, concept art, and product shots to life with realistic motion.
+              <div className="feature-header-text">
+                <div className="feature-title-row">
+                  <h2 className="feature-title">Image to Video</h2>
+                  <span className="feature-badge badge-pink">Image-to-Video</span>
+                </div>
+                <p className="feature-desc">
+                  Bring still photos, concept art, and product shots to life with neural fluid dynamics and realistic depth motion.
                 </p>
               </div>
             </div>
 
-            <div className="card-features-list">
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Drag & drop PNG, JPG or sample assets</span>
+            <div className="feature-checklist">
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Drag & Drop PNG, JPG, SVG with Sample Presets</span>
               </div>
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Intelligent camera pan, tilt, zoom & speed controls</span>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Intelligent Camera Pan, Tilt, Zoom, and Orbit Dynamics</span>
               </div>
-              <div className="feature-item">
-                <span className="check-bullet"><Icons.Check /></span>
-                <span>Instant playback & direct WebM/PNG export</span>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Subtle, Smooth, Dynamic & Fast Motion Controls</span>
               </div>
             </div>
           </div>
@@ -118,59 +131,63 @@ export default function VideoHubPage() {
               e.stopPropagation();
               navigate('/image-to-video');
             }}
-            className="generate-btn"
-            style={{ marginTop: '24px', background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #ec4899 100%)' }}
+            className="feature-action-btn btn-purple-pink"
           >
             <span>Open Image to Video</span>
             <Icons.ArrowRight />
           </button>
         </div>
-      </div>
 
-      {/* QUICK TEMPLATES & PRESETS */}
-      <div className="hub-showcase-section">
-        <div className="template-grid">
-          {[
-            {
-              title: 'Futuristic Cyber City',
-              desc: 'Flying vehicles zooming through neon skyways in heavy rain',
-              type: 'Prompt to Video',
-              route: '/prompt-to-video'
-            },
-            {
-              title: 'Alpine Peak Sunrise',
-              desc: 'Drone swoop over snowcapped summits bathed in golden sunlight',
-              type: 'Prompt to Video',
-              route: '/prompt-to-video'
-            },
-            {
-              title: 'Fluid Portal Animation',
-              desc: 'Transform your artwork with glowing particles and depth sweep',
-              type: 'Image to Video',
-              route: '/image-to-video'
-            }
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              className="template-card"
-              onClick={() => navigate(item.route)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span className="template-tag">{item.type}</span>
-                <Icons.Sparkles />
+        {/* Card 3: AI Characters Studio */}
+        <div
+          onClick={() => navigate('/characters')}
+          className="feature-card character-feature-card"
+          role="button"
+          tabIndex={0}
+        >
+          <div className="feature-card-inner-top">
+            <div className="feature-card-header">
+              <div className="feature-icon-circle icon-emerald">
+                <Icons.Users />
               </div>
-              <h4 style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>
-                {item.title}
-              </h4>
-              <p style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
-                {item.desc}
-              </p>
-              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600', color: '#4f46e5' }}>
-                <span>Try Template</span>
-                <Icons.ArrowRight />
+              <div className="feature-header-text">
+                <div className="feature-title-row">
+                  <h2 className="feature-title">AI Characters Studio</h2>
+                  <span className="feature-badge badge-emerald">New Submenu</span>
+                </div>
+                <p className="feature-desc">
+                  Create and save custom AI character personas with image uploads, backstories, and one-click video integration.
+                </p>
               </div>
             </div>
-          ))}
+
+            <div className="feature-checklist">
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>10 Master Default AI Characters with Lore & Prompts</span>
+              </div>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Upload Custom Image Portrait to Create New Characters</span>
+              </div>
+              <div className="check-item">
+                <span className="check-icon">✓</span>
+                <span>Save to Library & Use Instantly in Video Studios</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/characters');
+            }}
+            className="feature-action-btn btn-emerald-cyan"
+          >
+            <span>Open Characters Studio</span>
+            <Icons.ArrowRight />
+          </button>
         </div>
       </div>
     </div>

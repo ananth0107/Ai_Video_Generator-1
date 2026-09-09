@@ -38,7 +38,7 @@ export default function LearnPage() {
           <h1 className="main-title">AI Learn & Documentation</h1>
           <span className="version-badge"><Icons.Learn /> Academy</span>
         </div>
-        <p className="main-subtitle">Tutorials, masterclasses, and best practices for creating AI media with AURQO.</p>
+        <p className="main-subtitle">Tutorials, masterclasses, and best practices for creating AI media with THAMILI.</p>
       </div>
 
       <div className="cards-grid">

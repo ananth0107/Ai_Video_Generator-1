@@ -54,7 +54,7 @@ export default function ToolsPage() {
     <div className="view-container">
       <div className="page-heading">
         <div className="heading-row">
-          <h1 className="main-title">AURQO AI Tools Suite</h1>
+          <h1 className="main-title">THAMILI AI Tools Suite</h1>
           <span className="version-badge"><Icons.Tools /> All Tools</span>
         </div>
         <p className="main-subtitle">Access our complete toolkit of AI-powered creative and generation models.</p>

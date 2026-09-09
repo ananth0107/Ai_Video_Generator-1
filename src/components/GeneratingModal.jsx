@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from './Icons';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function GeneratingModal({
   isOpen,
@@ -9,80 +10,59 @@ export default function GeneratingModal({
   promptSummary,
   onCancel
 }) {
+  const { t, language } = useLanguage();
+
   if (!isOpen) return null;
 
   return (
-    <div className="generating-modal-backdrop" onClick={(e) => e.stopPropagation()}>
-      <div className="generating-modal-card" onClick={(e) => e.stopPropagation()}>
-        {/* Top Decorative Glow bar */}
-        <div className="card-top-accent accent-blue-purple"></div>
+    <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-top-accent"></div>
 
-        {/* Header with animated spinner */}
-        <div className="modal-header-section">
-          <div className="modal-spinner-wrapper">
-            <div className="modal-spinner-ring"></div>
-            <div className="modal-spinner-icon">
-              <Icons.Loader />
-            </div>
-          </div>
-
-          <div className="modal-title-group">
-            <div className="modal-badge-row">
-              <span className="modal-pill-tag">
-                <Icons.Sparkles /> AURQO Neural Engine
-              </span>
-              <span className="modal-percent-badge">{progressPercent}%</span>
-            </div>
-            <h2 className="modal-heading">Generating Video...</h2>
-            <p className="modal-subheading">
-              {videoType === 'image' ? 'Image-to-Video Synthesis' : 'Prompt-to-Video Generation'}
-            </p>
+        <div className="modal-spinner-ring">
+          <div className="spinner-pulse">
+            <Icons.Loader />
           </div>
         </div>
 
-        {/* Active Stage info */}
-        <div className="modal-stage-box">
-          <div className="stage-pulse-dot"></div>
-          <div className="stage-text-wrap">
-            <span className="stage-label">Current Stage</span>
-            <p className="stage-description">{progressStatus || 'Synthesizing neural keyframes...'}</p>
-          </div>
+        <div>
+          <h3 className="modal-title">
+            {language === 'ta' ? 'வீடியோ உருவாக்கப்படுகிறது...' : 'Generating Video...'}
+          </h3>
+          <p className="modal-subtitle">
+            {progressStatus || (language === 'ta' ? 'நியூரல் பிரேம்களை ஒருங்கிணைக்கிறது...' : 'Synthesizing neural keyframes and diffusion motion...')}
+          </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="modal-progress-bar-wrap">
+        <div className="modal-progress-wrap">
           <div className="modal-progress-track">
             <div
               className="modal-progress-fill"
               style={{ width: `${progressPercent}%` }}
-            >
-              <div className="progress-glow-point"></div>
-            </div>
+            ></div>
           </div>
-          <div className="modal-progress-footer">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: '700', color: '#6366f1', marginTop: '2px' }}>
             <span>0%</span>
-            <span className="est-time-text">
-              {progressPercent < 100 ? 'Rendering frames...' : 'Finalizing clip!'}
-            </span>
+            <span className="modal-percent-text">{progressPercent}%</span>
             <span>100%</span>
           </div>
         </div>
 
-        {/* Prompt Preview Snippet */}
         {promptSummary && (
-          <div className="modal-prompt-snippet">
-            <span className="snippet-label">Prompt:</span>
-            <span className="snippet-text">"{promptSummary}"</span>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '10px 14px', width: '100%', textAlign: 'left', fontSize: '13px', color: '#475569', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            "{promptSummary}"
           </div>
         )}
 
-        {/* Cancel Button */}
         {onCancel && progressPercent < 100 && (
-          <div className="modal-actions">
-            <button type="button" onClick={onCancel} className="modal-cancel-btn">
-              Cancel Generation
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="tool-btn"
+            style={{ fontSize: '13px', padding: '8px 18px', color: '#64748B', borderColor: '#CBD5E1', marginTop: '6px' }}
+          >
+            {t('cancel')}
+          </button>
         )}
       </div>
     </div>

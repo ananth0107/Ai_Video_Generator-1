@@ -8,7 +8,7 @@ export default function CodePage() {
   const [prompt, setPrompt] = useState('Create a custom video scrubber timeline hook in React');
   const [codeOutput, setCodeOutput] = useState(`import { useState, useCallback } from 'react';
 
-// AURQO Custom Video Timeline Hook
+// THAMILI Custom Video Timeline Hook
 export function useVideoTimeline(duration = 10) {
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -26,7 +26,7 @@ export function useVideoTimeline(duration = 10) {
     e.preventDefault();
     showToast(`Generating ${language} code...`, 'Code');
     setTimeout(() => {
-      setCodeOutput(`// Generated ${language} Solution for: "${prompt}"\n// AURQO Neural Code Engine\n\nexport default function Solution() {\n  console.log("Optimized solution executed cleanly!");\n}`);
+      setCodeOutput(`// Generated ${language} Solution for: "${prompt}"\n// THAMILI Neural Code Engine\n\nexport default function Solution() {\n  console.log("Optimized solution executed cleanly!");\n}`);
       showToast('Code generated successfully!', 'Check');
     }, 600);
   };
@@ -72,7 +72,7 @@ export function useVideoTimeline(duration = 10) {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="What code would you like to build?"
-              className="aurqo-textarea"
+              className="thamili-textarea"
             />
           </div>
 

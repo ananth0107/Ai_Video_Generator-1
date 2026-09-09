@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
+import ThamiliBrandLogo from '../components/ThamiliBrandLogo';
 import { useToast } from '../context/ToastContext';
 
 export default function HomePage() {
@@ -11,20 +12,15 @@ export default function HomePage() {
   const handleAskSubmit = (e) => {
     e.preventDefault();
     if (!askInput.trim()) return;
-    showToast(`Sending to AURQO AI: "${askInput}"`, 'Sparkles');
+    showToast(`Sending to THAMILI AI: "${askInput}"`, 'Sparkles');
     navigate('/chat');
   };
 
   return (
     <div className="view-container" style={{ alignItems: 'center', textAlign: 'center', margin: 'auto' }}>
       {/* Brand Hero */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', maxWidth: '680px' }}>
-        <div style={{ width: '84px', height: '84px' }}>
-          <Icons.Logo />
-        </div>
-        <div style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.03em', color: '#0f172a' }}>
-          AURQO <span className="brand-dot" style={{ width: '8px', height: '8px', marginBottom: '12px' }}></span>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', maxWidth: '680px' }}>
+        <ThamiliBrandLogo height={80} />
         <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#0f172a', lineHeight: 1.25 }}>
           One AI Studio.{' '}
           <span style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -52,8 +48,8 @@ export default function HomePage() {
             rows={3}
             value={askInput}
             onChange={(e) => setAskInput(e.target.value)}
-            placeholder="How can AURQO help you create today? (e.g. Generate a futuristic drone video, write React code, or brainstorm ideas)"
-            className="aurqo-textarea"
+            placeholder="How can THAMILI help you create today? (e.g. Generate a futuristic drone video, write React code, or brainstorm ideas)"
+            className="thamili-textarea"
             style={{ border: 'none', background: 'transparent', padding: '4px', boxShadow: 'none' }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

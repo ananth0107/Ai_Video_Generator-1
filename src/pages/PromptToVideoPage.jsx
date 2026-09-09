@@ -1,33 +1,46 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import GeneratingModal from '../components/GeneratingModal';
 import VideoPlayer from '../components/VideoPlayer';
+import DropdownSelect from '../components/DropdownSelect';
+import CharacterSelectDropdown from '../components/CharacterSelectDropdown';
 import { useToast } from '../context/ToastContext';
-
-const generationStages = [
-  { percent: 15, text: 'Analyzing text prompt semantics and spatial vectors...' },
-  { percent: 42, text: 'Generating neural motion diffusion keyframes...' },
-  { percent: 78, text: 'Rendering high-resolution cinematic frames...' },
-  { percent: 96, text: 'Applying lighting consistency and color grading...' },
-  { percent: 100, text: 'Video generation completed!' }
-];
-
-const samplePrompts = [
-  'A futuristic cyberpunk city at night with flying cars, cinematic lighting, and neon rain reflections.',
-  'Cinematic drone footage flying over misty alpine mountains during golden hour sunset.',
-  'Close-up of a majestic glowing phoenix rising through sparkling volcanic embers in 8K.',
-  'Hyperrealistic time-lapse of neon bioluminescent jellyfish drifting in deep underwater abyss.'
-];
+import { useCharacters } from '../context/CharacterContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function PromptToVideoPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
+  const { selectedCharacters } = useCharacters();
+  const { t, language } = useLanguage();
 
-  const [promptText, setPromptText] = useState('');
-  const [promptAspect, setPromptAspect] = useState('16:9');
-  const [promptDuration, setPromptDuration] = useState('10s'); // '5s' | '10s' | '15s'
-  const [promptStyle, setPromptStyle] = useState('Cinematic');
+  const [promptText, setPromptText] = useState(
+    location.state?.presetPrompt ||
+      'A golden sunrise over misty mountain peaks with a glowing horizon, volumetric sun rays, and soaring eagles.'
+  );
+  const [promptAspect, setPromptAspect] = useState(location.state?.presetAspect || '16:9');
+  const [promptStyle, setPromptStyle] = useState(location.state?.presetStyle || 'Cinematic');
+  const [cameraMotion, setCameraMotion] = useState('Smooth Zoom');
+  const [lightingMood, setLightingMood] = useState('Volumetric Sun');
+  const [isAiEnhance, setIsAiEnhance] = useState(true);
+  const [activeSceneryId, setActiveSceneryId] = useState(location.state?.sceneryId || 'golden-sunrise');
+
+  useEffect(() => {
+    if (location.state?.presetPrompt) {
+      setPromptText(location.state.presetPrompt);
+    }
+    if (location.state?.presetAspect) {
+      setPromptAspect(location.state.presetAspect);
+    }
+    if (location.state?.presetStyle) {
+      setPromptStyle(location.state.presetStyle);
+    }
+    if (location.state?.sceneryId) {
+      setActiveSceneryId(location.state.sceneryId);
+    }
+  }, [location.state]);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -38,243 +51,329 @@ export default function PromptToVideoPage() {
   const [generatedVideo, setGeneratedVideo] = useState({
     hasGenerated: true,
     type: 'prompt',
-    prompt: 'A futuristic city at night with flying cars, cinematic lighting, and rain.',
-    aspectRatio: '16:9',
-    style: 'Cinematic',
-    duration: 10,
+    prompt:
+      location.state?.presetPrompt ||
+      'A golden sunrise over misty mountain peaks with a glowing horizon, volumetric sun rays, and soaring eagles.',
+    aspectRatio: location.state?.presetAspect || '16:9',
+    style: location.state?.presetStyle || 'Cinematic',
+    sceneryId: location.state?.sceneryId || 'golden-sunrise',
+    characters: [],
+    aiEnhanced: true,
     isSaved: false
   });
 
   const previewSectionRef = useRef(null);
 
-  const handleGenerate = () => {
-    const finalPrompt = promptText.trim() || 'A futuristic city at night with flying cars, cinematic lighting, and rain.';
-    const finalDuration = parseInt(promptDuration, 10) || 10;
+  // Build full generation prompt including selected character names
+  const getAugmentedPrompt = useCallback(() => {
+    let final = promptText.trim() || 'A futuristic cyber city at night with flying vehicles, neon skyways, and volumetric rain lighting.';
+    if (selectedCharacters.length > 0) {
+      const charNames = selectedCharacters.map((c) => c.name).join(' and ');
+      if (!final.toLowerCase().includes(selectedCharacters[0].name.toLowerCase())) {
+        final = `Featuring ${charNames}: ${final}`;
+      }
+    }
+    return final;
+  }, [promptText, selectedCharacters]);
+
+  const handleGenerate = useCallback(() => {
+    const finalPrompt = getAugmentedPrompt();
+    const stages = t('genStages');
 
     setIsGenerating(true);
     setProgressPercent(5);
-    setProgressStatus(generationStages[0].text);
+    setProgressStatus(stages[0].text);
 
     let stageIdx = 0;
     const interval = setInterval(() => {
       stageIdx++;
-      if (stageIdx < generationStages.length) {
-        setProgressPercent(generationStages[stageIdx].percent);
-        setProgressStatus(generationStages[stageIdx].text);
+      if (stageIdx < stages.length) {
+        setProgressPercent(stages[stageIdx].percent);
+        setProgressStatus(stages[stageIdx].text);
       } else {
         clearInterval(interval);
         setTimeout(() => {
           setIsGenerating(false);
-          setGeneratedVideo({
+          setGeneratedVideo((prev) => ({
+            ...prev,
             hasGenerated: true,
             type: 'prompt',
             prompt: finalPrompt,
             style: promptStyle,
             aspectRatio: promptAspect,
-            duration: finalDuration,
+            sceneryId: activeSceneryId,
+            characters: selectedCharacters,
+            aiEnhanced: isAiEnhance,
             isSaved: false
-          });
-          showToast(`Exact ${finalDuration}-Second video generated successfully!`, 'Video');
+          }));
+          showToast(
+            language === 'ta'
+              ? '4K HDR வீடியோ வெற்றிகரமாக உருவாக்கப்பட்டது!'
+              : 'Video generated successfully in 4K HDR!',
+            'Video'
+          );
           if (previewSectionRef.current) {
             previewSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        }, 500);
+        }, 400);
       }
-    }, 550);
-  };
+    }, 450);
+  }, [getAugmentedPrompt, promptStyle, promptAspect, activeSceneryId, selectedCharacters, isAiEnhance, showToast, t, language]);
+
+  // Keyboard shortcut: Ctrl+Enter or Cmd+Enter to generate
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isGenerating) {
+          handleGenerate();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleGenerate, isGenerating]);
 
   const handleSaveToggle = () => {
     const next = !generatedVideo.isSaved;
     setGeneratedVideo((prev) => ({ ...prev, isSaved: next }));
     showToast(
-      next ? 'Video saved to your collection!' : 'Video removed from collection',
+      next
+        ? language === 'ta'
+          ? 'வீடியோ உங்கள் நூலகத்தில் சேமிக்கப்பட்டது!'
+          : 'Video saved to your library!'
+        : language === 'ta'
+        ? 'வீடியோ நூலகத்திலிருந்து நீக்கப்பட்டது'
+        : 'Video removed from library',
       next ? 'BookmarkCheck' : 'Bookmark'
     );
   };
 
+
+  // Dropdown options
+  const styleOptionsList = [
+    { value: 'Cinematic', label: t('styleOptions')?.Cinematic || 'Cinematic' },
+    { value: 'Realistic', label: t('styleOptions')?.Realistic || 'Realistic' },
+    { value: 'Anime', label: t('styleOptions')?.Anime || 'Anime' },
+    { value: '3D Render', label: t('styleOptions')?.['3D Render'] || '3D Render' }
+  ];
+
+  const cameraOptionsList = [
+    { value: 'Smooth Zoom', label: t('cameraDynamicsOptions')?.['Smooth Zoom'] || 'Smooth Zoom' },
+    { value: 'Pan Right', label: t('cameraDynamicsOptions')?.['Pan Right'] || 'Pan Right' },
+    { value: 'Drone Orbit', label: t('cameraDynamicsOptions')?.['Drone Orbit'] || 'Drone Orbit' },
+    { value: 'Dynamic Flow', label: t('cameraDynamicsOptions')?.['Dynamic Flow'] || 'Dynamic Flow' }
+  ];
+
+  const lightingOptionsList = [
+    { value: 'Volumetric Sun', label: t('lightingOptions')?.['Volumetric Sun'] || 'Volumetric Sun' },
+    { value: 'Cyber Neon', label: t('lightingOptions')?.['Cyber Neon'] || 'Cyber Neon' },
+    { value: 'Golden Hour', label: t('lightingOptions')?.['Golden Hour'] || 'Golden Hour' }
+  ];
+
+  const aspectOptionsList = [
+    { value: '16:9', label: '16:9', desc: language === 'ta' ? 'கிடைமட்டம் (Landscape)' : 'Landscape' },
+    { value: '9:16', label: '9:16', desc: language === 'ta' ? 'செங்குத்து (Portrait)' : 'Portrait' },
+    { value: '1:1', label: '1:1', desc: language === 'ta' ? 'சதுரம் (Square)' : 'Square' }
+  ];
+
   return (
     <div className="view-container">
-      {/* Top Header Row with Back Button */}
+      {/* Studio Header Row */}
       <div className="page-heading">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="page-heading-inner">
           <div className="heading-row">
             <button
               type="button"
-              onClick={() => navigate('/video')}
+              onClick={() => navigate('/characters')}
               className="icon-btn"
-              title="Back to AI Video Hub"
-              style={{ marginRight: '4px' }}
+              title="Characters Library"
             >
               <Icons.ArrowLeft />
             </button>
-            <h1 className="main-title">Prompt to Video</h1>
-            <span className="version-badge">
-              <Icons.Sparkles /> Dedicated Studio
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/image-to-video')}
-            className="tool-btn"
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-          >
-            <Icons.Image />
-            <span>Switch to Image to Video</span>
-          </button>
-        </div>
-        <p className="main-subtitle">
-          Transform text descriptions into high-fidelity AI generated video clips in seconds.
-        </p>
-      </div>
-
-      {/* Creation Form Card */}
-      <div className="creation-card active-card" style={{ cursor: 'default' }}>
-        <div className="card-top-accent accent-blue-purple"></div>
-
-        <div>
-          <div className="card-header">
-            <div className="card-icon-box icon-box-blue">
-              <Icons.Sparkles />
-            </div>
-            <div>
-              <h2 className="card-title">Prompt to Video Creation</h2>
-              <p className="card-desc">
-                Describe the scene, motion, atmosphere, and camera direction.
-              </p>
+            <div className="heading-text-group">
+              <div className="heading-title-row">
+                <h1 className="main-title">{t('p2vTitle')}</h1>
+                <span className="studio-pill-badge">{t('p2vBadge')}</span>
+              </div>
+              <p className="main-subtitle">{t('p2vSubtitle')}</p>
             </div>
           </div>
 
-          {/* Video Prompt Area */}
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="prompt-input">Video Prompt</label>
-              <span className="char-counter">{promptText.length}/500</span>
-            </div>
-            <textarea
-              id="prompt-input"
-              rows={4}
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              placeholder="Describe the video you want to create... (e.g. A futuristic cyber city at dusk with glowing neon trails and flying vehicles)"
-              className="aurqo-textarea"
-            />
-
-            {/* Prompt Suggestion Chips */}
-            <div style={{ marginTop: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Sample Prompts:
-              </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                {samplePrompts.map((p, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setPromptText(p)}
-                    className="prompt-chip"
-                  >
-                    "{p.slice(0, 42)}..."
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Controls: Aspect Ratio, Duration & Style */}
-          <div className="controls-grid-3">
-            <div>
-              <label className="control-label">Aspect Ratio</label>
-              <div className="pills-group pills-3">
-                {['16:9', '9:16', '1:1'].map((ratio) => (
-                  <button
-                    key={ratio}
-                    type="button"
-                    onClick={() => setPromptAspect(ratio)}
-                    className={`pill-btn ${promptAspect === ratio ? 'active' : ''}`}
-                  >
-                    <span
-                      className={
-                        ratio === '16:9'
-                          ? 'aspect-icon-169'
-                          : ratio === '9:16'
-                          ? 'aspect-icon-916'
-                          : 'aspect-icon-11'
-                      }
-                    ></span>
-                    <span>{ratio}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="control-label">
-                Duration <span style={{ color: '#4f46e5', fontSize: '11px', fontWeight: '700' }}>(Exact)</span>
-              </label>
-              <div className="pills-group pills-3">
-                {['5s', '10s', '15s'].map((dur) => (
-                  <button
-                    key={dur}
-                    type="button"
-                    onClick={() => setPromptDuration(dur)}
-                    className={`pill-btn ${promptDuration === dur ? 'active' : ''}`}
-                    title={dur === '10s' ? '10 Seconds Exact Video Clip' : `${dur} Video`}
-                  >
-                    <Icons.Clock />
-                    <span>{dur}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="control-label">Visual Style</label>
-              <div className="pills-group pills-2">
-                {['Cinematic', 'Realistic', 'Animation', '3D'].map((style) => (
-                  <button
-                    key={style}
-                    type="button"
-                    onClick={() => setPromptStyle(style)}
-                    className={`pill-btn ${promptStyle === style ? 'active' : ''}`}
-                  >
-                    {style}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="heading-actions-right">
+            <button
+              type="button"
+              onClick={() => navigate('/characters')}
+              className="tool-btn"
+              title="Browse Characters Library"
+            >
+              <Icons.Users />
+              <span>{t('characters')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/image-to-video')}
+              className="tool-btn"
+              title="Switch to Image to Video"
+            >
+              <Icons.Image />
+              <span>{t('imageToVideo')}</span>
+            </button>
           </div>
         </div>
-
-        {/* Generate Button */}
-        <button
-          type="button"
-          disabled={isGenerating}
-          onClick={handleGenerate}
-          className="generate-btn"
-        >
-          <span>Generate Video ({promptDuration})</span>
-          <Icons.ArrowRight />
-        </button>
       </div>
 
-      {/* Video Preview Section */}
-      <div ref={previewSectionRef}>
-        <VideoPlayer
-          video={generatedVideo}
-          onRegenerate={handleGenerate}
-          onSaveToggle={handleSaveToggle}
-        />
+      {/* Main Two-Column Studio Layout */}
+      <div className="studio-split-layout">
+        {/* LEFT COLUMN: CREATION CONFIGURATOR */}
+        <div className="studio-card-panel">
+          <div className="creation-card active-card">
+            <div className="card-top-accent accent-blue-purple"></div>
+
+            <div className="creation-card-inner">
+              {/* 1. Video Description & Prompt Area */}
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label htmlFor="prompt-input" className="form-step-label">
+                    <span className="form-step-badge">01</span>
+                    <span>{t('step1PromptLabel')}</span>
+                  </label>
+                  <div className="label-controls-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isAiEnhance;
+                        setIsAiEnhance(next);
+                        showToast(
+                          next
+                            ? language === 'ta'
+                              ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
+                              : '✨ AI Enhance ON: Auto-optimizing lighting & 4K HDR clarity!'
+                            : language === 'ta'
+                            ? 'AI மேம்பாடு அணைக்கப்பட்டது'
+                            : 'AI Enhance turned OFF',
+                          'Sparkles'
+                        );
+                      }}
+                      className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
+                      title="Toggle AI Enhance"
+                      aria-pressed={isAiEnhance}
+                    >
+                      <div className="enhance-btn-content">
+                        <Icons.Sparkles />
+                        <span>{t('aiEnhance')}</span>
+                      </div>
+                      <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
+                        <div className="enhance-switch-thumb"></div>
+                      </div>
+                    </button>
+
+                    <span className="char-counter">{promptText.length}/500</span>
+                  </div>
+                </div>
+
+                <div className="textarea-wrapper">
+                  <textarea
+                    id="prompt-input"
+                    rows={3.5}
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    placeholder={t('promptPlaceholder')}
+                    className="thamili-textarea"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Characters Dropdown & Multi-Select Tags */}
+              <div className="form-group">
+                <CharacterSelectDropdown
+                  badge="02"
+                  label={t('stepCharactersLabel')}
+                  onOpenLibrary={() => navigate('/characters')}
+                />
+              </div>
+
+              {/* 3 & 4. Dropdowns Grid: Aspect Ratio & Visual Style */}
+              <div className="dropdowns-two-col-grid">
+                <DropdownSelect
+                  badge="03"
+                  label={t('stepAspectRatioLabel')}
+                  value={promptAspect}
+                  onChange={setPromptAspect}
+                  options={aspectOptionsList}
+                />
+
+                <DropdownSelect
+                  badge="04"
+                  label={t('stepVisualStyleLabel')}
+                  value={promptStyle}
+                  onChange={setPromptStyle}
+                  options={styleOptionsList}
+                />
+              </div>
+
+              {/* 5 & 6. Dropdowns Grid: Camera Dynamics & Atmospheric Lighting */}
+              <div className="dropdowns-two-col-grid">
+                <DropdownSelect
+                  badge="05"
+                  label={t('stepCameraDynamicsLabel')}
+                  value={cameraMotion}
+                  onChange={setCameraMotion}
+                  options={cameraOptionsList}
+                />
+
+                <DropdownSelect
+                  badge="06"
+                  label={t('stepAtmosphericLightingLabel')}
+                  value={lightingMood}
+                  onChange={setLightingMood}
+                  options={lightingOptionsList}
+                />
+              </div>
+            </div>
+
+            {/* Main Generate Button Action Area */}
+            <div className="generate-action-bar">
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={handleGenerate}
+                className="generate-btn"
+                title="Generate AI Video (Ctrl + Enter)"
+              >
+                <div className="gen-btn-left">
+                  <Icons.Sparkles />
+                  <span>{t('generate4kVideo')}</span>
+                </div>
+                <div className="gen-btn-right">
+                  <span className="shortcut-tag">Ctrl + ↵</span>
+                  <Icons.ArrowRight />
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: OUTPUT PREVIEW & NEURAL PLAYER */}
+        <div className="studio-output-panel" ref={previewSectionRef}>
+          <VideoPlayer
+            video={generatedVideo}
+            onRegenerate={handleGenerate}
+            onSaveToggle={handleSaveToggle}
+          />
+        </div>
       </div>
 
-      {/* Background-Blurred Modal Popup during Video Generation */}
+      {/* Generating Progress Modal Overlay */}
       <GeneratingModal
         isOpen={isGenerating}
         progressPercent={progressPercent}
         progressStatus={progressStatus}
         videoType="prompt"
-        promptSummary={promptText.trim() || 'A futuristic city at night with flying cars, cinematic lighting, and rain.'}
+        promptSummary={getAugmentedPrompt()}
         onCancel={() => {
           setIsGenerating(false);
-          showToast('Generation cancelled', 'Trash2');
+          showToast(language === 'ta' ? 'உருவாக்கம் ரத்து செய்யப்பட்டது' : 'Generation cancelled', 'Trash2');
         }}
       />
     </div>

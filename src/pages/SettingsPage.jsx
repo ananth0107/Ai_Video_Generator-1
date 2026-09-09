@@ -61,12 +61,12 @@ export default function SettingsPage() {
           </div>
 
           <div className="form-group">
-            <label className="control-label">AURQO Neural Engine API Key</label>
+            <label className="control-label">THAMILI Neural Engine API Key</label>
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="aurqo-textarea"
+              className="thamili-textarea"
               style={{ height: '46px', padding: '10px 14px' }}
             />
           </div>
