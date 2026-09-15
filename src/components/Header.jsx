@@ -30,11 +30,13 @@ export default function Header({ onToggleMobileSidebar = () => {} }) {
   }, [isLangMenuOpen]);
 
   const path = location.pathname.toLowerCase();
-  const isPrompt = path.includes('prompt') || path === '/' || path === '/video';
+  const isHistory = path.includes('history');
+  const isPrompt = (path.includes('prompt') || path === '/' || path === '/video') && !isHistory;
   const isImageToVideo = path.includes('image-to-video');
   const isCharacters = path.includes('characters');
 
   const getSubBreadcrumb = () => {
+    if (isHistory) return t('historyBreadcrumb', 'HISTORY');
     if (isPrompt && !isImageToVideo) return t('promptToVideoBreadcrumb');
     if (isImageToVideo) return t('imageToVideoBreadcrumb');
     if (isCharacters) return t('charactersBreadcrumb');

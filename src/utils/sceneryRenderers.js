@@ -1,45 +1,55 @@
 /**
  * High-Performance Procedural Scene Renderers for 10 Animated Scenery Simulations
  */
+import { renderCharacterOnScene } from './characterRenderers';
 
-export function renderSceneryScene(ctx, width, height, canvasTime, sceneryId = 'golden-sunrise', isAiEnhanced = true) {
+export function renderSceneryScene(
+  ctx,
+  width,
+  height,
+  canvasTime,
+  sceneryId = 'golden-sunrise',
+  isAiEnhanced = true,
+  character = null,
+  progress = 0
+) {
   switch (sceneryId) {
     case 'aurora-borealis':
-      renderAuroraBorealis(ctx, width, height, canvasTime, isAiEnhanced);
+      renderAuroraBorealis(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'sakura-twilight':
-      renderSakuraTwilight(ctx, width, height, canvasTime, isAiEnhanced);
+      renderSakuraTwilight(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'cyberpunk-city':
-      renderCyberpunkCity(ctx, width, height, canvasTime, isAiEnhanced);
+      renderCyberpunkCity(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'ocean-waves-sunset':
-      renderOceanWaves(ctx, width, height, canvasTime, isAiEnhanced);
+      renderOceanWaves(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'cosmic-nebula':
-      renderCosmicNebula(ctx, width, height, canvasTime, isAiEnhanced);
+      renderCosmicNebula(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'rainforest-waterfall':
-      renderRainforestWaterfall(ctx, width, height, canvasTime, isAiEnhanced);
+      renderRainforestWaterfall(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'autumn-forest':
-      renderAutumnForest(ctx, width, height, canvasTime, isAiEnhanced);
+      renderAutumnForest(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'desert-starlight':
-      renderDesertStarlight(ctx, width, height, canvasTime, isAiEnhanced);
+      renderDesertStarlight(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'floating-cloud-city':
-      renderFloatingCloudCity(ctx, width, height, canvasTime, isAiEnhanced);
+      renderFloatingCloudCity(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
     case 'golden-sunrise':
     default:
-      renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced);
+      renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced, character, progress);
       break;
   }
 }
 
 // 1. Golden Mountain Sunrise
-function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced) {
+function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced, character = null, progress = 0) {
   const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
   skyGrad.addColorStop(0, '#0f172a');
   skyGrad.addColorStop(0.35, '#1e1b4b');
@@ -90,7 +100,7 @@ function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced) {
     ctx.restore();
   }
 
-  // Mountain Layers
+  // Mountain Layer 1 (Back Ridge)
   ctx.fillStyle = 'rgba(46, 16, 101, 0.75)';
   ctx.beginPath();
   ctx.moveTo(0, height);
@@ -103,6 +113,7 @@ function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced) {
   ctx.closePath();
   ctx.fill();
 
+  // Mountain Layer 2 (Mid Ridge)
   ctx.fillStyle = 'rgba(24, 9, 66, 0.9)';
   ctx.beginPath();
   ctx.moveTo(0, height);
@@ -115,6 +126,34 @@ function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced) {
   ctx.closePath();
   ctx.fill();
 
+  // Promontory Mountain Peak Crest where character stands
+  ctx.save();
+  const rockGrad = ctx.createLinearGradient(width * 0.32, height * 0.70, width * 0.48, height * 0.82);
+  rockGrad.addColorStop(0, '#1c0f2b');
+  rockGrad.addColorStop(0.5, '#0d0718');
+  rockGrad.addColorStop(1, '#05020a');
+  ctx.fillStyle = rockGrad;
+  ctx.beginPath();
+  ctx.moveTo(width * 0.30, height * 0.82);
+  ctx.lineTo(width * 0.36, height * 0.745);
+  ctx.lineTo(width * 0.42, height * 0.735); // Ledge summit
+  ctx.lineTo(width * 0.46, height * 0.755);
+  ctx.lineTo(width * 0.52, height * 0.83);
+  ctx.lineTo(width * 0.30, height * 0.83);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Integrated Character Layer (Natural Subject Integration)
+  if (character) {
+    renderCharacterOnScene(ctx, width, height, canvasTime, progress, character, isAiEnhanced, {
+      sunX,
+      sunY,
+      sceneryId: 'golden-sunrise'
+    });
+  }
+
+  // Mountain Layer 3 (Foreground Rock Ridge)
   const fgGrad = ctx.createLinearGradient(0, height * 0.8, 0, height);
   fgGrad.addColorStop(0, '#090514');
   fgGrad.addColorStop(1, '#020108');
@@ -130,11 +169,27 @@ function renderGoldenSunrise(ctx, width, height, canvasTime, isAiEnhanced) {
   ctx.closePath();
   ctx.fill();
 
-  // Soaring Birds
+  // Volumetric Dawn Valley Mist & Clouds (Passing across foreground and character)
+  ctx.save();
+  for (let m = 0; m < 3; m++) {
+    const mistY = height * 0.72 + m * 38;
+    const mistX = (canvasTime * 14 * (m + 1) + m * 360) % (width + 500) - 250;
+    const mistGrad = ctx.createRadialGradient(mistX, mistY, 20, mistX, mistY, 240);
+    mistGrad.addColorStop(0, 'rgba(254, 215, 170, 0.12)');
+    mistGrad.addColorStop(0.5, 'rgba(244, 114, 182, 0.06)');
+    mistGrad.addColorStop(1, 'rgba(244, 114, 182, 0)');
+    ctx.fillStyle = mistGrad;
+    ctx.beginPath();
+    ctx.ellipse(mistX, mistY, 280, 42, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Soaring Eagles Gliding in the Dawn Sky
   const birds = [
-    { bx: (canvasTime * 45 + 150) % (width + 100) - 50, by: height * 0.32 + Math.sin(canvasTime) * 12, s: 1.2 },
-    { bx: (canvasTime * 45 + 90) % (width + 100) - 50, by: height * 0.36 + Math.sin(canvasTime + 1) * 10, s: 0.9 },
-    { bx: (canvasTime * 45 + 220) % (width + 100) - 50, by: height * 0.28 + Math.sin(canvasTime + 2) * 14, s: 1.0 }
+    { bx: (canvasTime * 45 + 150) % (width + 100) - 50, by: height * 0.30 + Math.sin(canvasTime) * 12, s: 1.3 },
+    { bx: (canvasTime * 45 + 90) % (width + 100) - 50, by: height * 0.35 + Math.sin(canvasTime + 1) * 10, s: 0.95 },
+    { bx: (canvasTime * 45 + 240) % (width + 100) - 50, by: height * 0.26 + Math.sin(canvasTime + 2) * 14, s: 1.1 }
   ];
   birds.forEach((b) => {
     ctx.save();

@@ -42,11 +42,48 @@ export default function VideoPlayer({
 
   // Refs
   const canvasRef = useRef(null);
+  const videoRef = useRef(null);
   const scrubberWrapRef = useRef(null);
   const isScrubbingRef = useRef(false);
   const playerContainerRef = useRef(null);
   const downloadPopupRef = useRef(null);
   const imageObjRef = useRef(null);
+
+  useEffect(() => {
+    if (video?.videoUrl) {
+      console.log('[Frontend] VideoPlayer assigned src:', video.videoUrl);
+    }
+  }, [video?.videoUrl]);
+
+  // Synchronize HTML5 video element state when video.videoUrl exists
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !video.videoUrl) return;
+
+    if (isPlaying) {
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  }, [isPlaying, video.videoUrl]);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !video.videoUrl) return;
+    vid.playbackRate = playbackSpeed;
+  }, [playbackSpeed, video.videoUrl]);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !video.videoUrl) return;
+    vid.muted = isMuted;
+  }, [isMuted, video.videoUrl]);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !video.videoUrl) return;
+    vid.loop = isLooping;
+  }, [isLooping, video.videoUrl]);
 
   // Close download popup on outside click
   useEffect(() => {
@@ -65,9 +102,10 @@ export default function VideoPlayer({
 
   // Load image if it's image-to-video
   useEffect(() => {
-    if (video.type === 'image' && video.uploadedImage) {
+    const source = video.uploadedImage || video.thumbnail;
+    if (video.type === 'image' && source) {
       const img = new Image();
-      img.src = video.uploadedImage;
+      img.src = source;
       imageObjRef.current = img;
     }
   }, [video]);
@@ -86,6 +124,7 @@ export default function VideoPlayer({
 
   // Real-time Canvas Neural Video Simulation
   useEffect(() => {
+    if (video.videoUrl) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -136,9 +175,12 @@ export default function VideoPlayer({
       if (video.type === 'image' && imageObjRef.current && imageObjRef.current.complete) {
         const img = imageObjRef.current;
         const norm = playbackProgress / 100;
-        const scale = 1.04 + Math.sin(norm * Math.PI) * 0.12;
-        const panX = Math.sin(norm * Math.PI * 2) * 20;
-        const panY = Math.cos(norm * Math.PI * 2) * 10;
+        // Never force zoom; maintain stable framing unless explicitly requested
+        const promptLower = (video.prompt || '').toLowerCase();
+        const hasExplicitZoom = promptLower.includes('zoom in') || promptLower.includes('dolly in');
+        const scale = hasExplicitZoom ? 1.0 + Math.sin(norm * Math.PI) * 0.08 : 1.0;
+        const panX = 0;
+        const panY = 0;
 
         ctx.save();
         ctx.translate(width / 2 + panX, height / 2 + panY);
@@ -173,23 +215,112 @@ export default function VideoPlayer({
         ctx.fillStyle = vigGrad;
         ctx.fillRect(0, 0, width, height);
       } else {
-        // RENDER DYNAMIC ANIMATED SCENERY PRESET
+        // RENDER DYNAMIC ANIMATED SCENERY & CHARACTER INTEGRATION
         const sceneryId = getSceneryId(video);
-        renderSceneryScene(ctx, width, height, canvasTime, sceneryId, video.aiEnhanced);
+        const normProgress = Math.max(0, Math.min(1, playbackProgress / 100));
+
+        // Detect active character from selected characters array or prompt text
+        const promptLower = (video.prompt || '').toLowerCase();
+        let activeCharacter = (video.characters && video.characters.length > 0) ? video.characters[0] : null;
+        if (!activeCharacter) {
+          if (promptLower.includes('trisha')) {
+            activeCharacter = { id: 'trisha-krishnan', name: 'Trisha Krishnan', gender: 'Actress', style: 'Cinematic' };
+          } else if (promptLower.includes('rajini')) {
+            activeCharacter = { id: 'rajinikanth', name: 'Rajinikanth', gender: 'Actor', style: 'Cinematic' };
+          } else if (promptLower.includes('vijay')) {
+            activeCharacter = { id: 'vijay', name: 'Vijay', gender: 'Actor', style: 'Cinematic' };
+          } else if (promptLower.includes('nayanthara')) {
+            activeCharacter = { id: 'nayanthara', name: 'Nayanthara', gender: 'Actress', style: 'Cinematic' };
+          }
+        }
+
+        if (activeCharacter) {
+          // CAMERA PERSPECTIVE: Default to stable, locked-off framing unless user explicitly requested camera movement
+          const wideCenterX = width * 0.50;
+          const wideCenterY = height * 0.50;
+          const targetFocusX = width * 0.40;
+          const targetFocusY = height * 0.735 - 130;
+
+          const isExplicitZoom = promptLower.includes('zoom in') || promptLower.includes('dolly in') || promptLower.includes('push in');
+          let cameraScale = 1.0;
+          let cameraFocusX = wideCenterX;
+          let cameraFocusY = wideCenterY;
+
+          if (isExplicitZoom) {
+            // Only apply zoom when user explicitly asked for zoom
+            const t = Math.min(1, normProgress / 0.85);
+            const smoothT = t * t * (3 - 2 * t);
+            cameraScale = 1.0 + (1.5 - 1.0) * smoothT;
+            cameraFocusX = wideCenterX + (targetFocusX - wideCenterX) * smoothT;
+            cameraFocusY = wideCenterY + (targetFocusY - wideCenterY) * smoothT;
+          } else {
+            // Stable locked-off camera showing subject and actions without zooming
+            cameraScale = 1.0;
+            cameraFocusX = wideCenterX;
+            cameraFocusY = wideCenterY;
+          }
+
+          ctx.save();
+          ctx.translate(width / 2, height / 2);
+          ctx.scale(cameraScale, cameraScale);
+          ctx.translate(-cameraFocusX, -cameraFocusY);
+
+          // Render scenery with embedded character and progress
+          renderSceneryScene(ctx, width, height, canvasTime, sceneryId, video.aiEnhanced, activeCharacter, normProgress);
+
+          // Floating Ambient Light Stars & Sparkles inside camera space
+          particles.forEach((p) => {
+            const py = (p.y - canvasTime * p.speed * 30 + height) % height;
+            const px = (p.x + Math.sin(canvasTime * 0.8 + py * 0.02) * 15) % width;
+
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha * (0.5 + Math.sin(canvasTime * 2 + p.speed) * 0.5);
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+          });
+
+          ctx.restore();
+
+          // Screen-space Anamorphic Golden Lens Bloom in Medium Close-Up
+          if (normProgress > 0.35) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const flareIntensity = Math.min(1, (normProgress - 0.35) / 0.45) * 0.22;
+            const flareGrad = ctx.createLinearGradient(0, height * 0.35, width, height * 0.65);
+            flareGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+            flareGrad.addColorStop(0.5, `rgba(251, 191, 36, ${flareIntensity})`);
+            flareGrad.addColorStop(1, 'rgba(244, 63, 94, 0)');
+            ctx.fillStyle = flareGrad;
+            ctx.fillRect(0, 0, width, height);
+            ctx.restore();
+          }
+
+          // Subtle Cinematic Edge Vignette
+          const vigGrad = ctx.createRadialGradient(width / 2, height / 2, height * 0.42, width / 2, height / 2, width * 0.76);
+          vigGrad.addColorStop(0, 'transparent');
+          vigGrad.addColorStop(1, 'rgba(2, 4, 12, 0.45)');
+          ctx.fillStyle = vigGrad;
+          ctx.fillRect(0, 0, width, height);
+        } else {
+          // Standard panoramic scenery without character
+          renderSceneryScene(ctx, width, height, canvasTime, sceneryId, video.aiEnhanced, null, normProgress);
+
+          // Floating Ambient Light Stars & Sparkles
+          particles.forEach((p) => {
+            const py = (p.y - canvasTime * p.speed * 30 + height) % height;
+            const px = (p.x + Math.sin(canvasTime * 0.8 + py * 0.02) * 15) % width;
+
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha * (0.5 + Math.sin(canvasTime * 2 + p.speed) * 0.5);
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+          });
+        }
       }
-
-      // Floating Ambient Light Stars & Sparkles
-      particles.forEach((p) => {
-        const py = (p.y - canvasTime * p.speed * 30 + height) % height;
-        const px = (p.x + Math.sin(canvasTime * 0.8 + py * 0.02) * 15) % width;
-
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.alpha * (0.5 + Math.sin(canvasTime * 2 + p.speed) * 0.5);
-        ctx.beginPath();
-        ctx.arc(px, py, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-      });
 
       // Camera HUD overlays
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
@@ -225,6 +356,22 @@ export default function VideoPlayer({
       ctx.font = '700 13px "Plus Jakarta Sans", sans-serif';
       ctx.fillText('THAMILI 4K NEURAL ENGINE', width - margin - 190, margin + 20);
 
+      // Real-time camera shot badge
+      const normProgressForBadge = Math.max(0, Math.min(1, playbackProgress / 100));
+      const promptLowerForBadge = (video.prompt || '').toLowerCase();
+      const hasCharForBadge = (video.characters && video.characters.length > 0) || promptLowerForBadge.includes('trisha');
+      if (hasCharForBadge) {
+        const charName = (video.characters && video.characters[0]?.name) || 'TRISHA KRISHNAN';
+        const shotType = normProgressForBadge <= 0.28
+          ? 'WIDE ESTABLISHING SHOT'
+          : normProgressForBadge < 0.72
+          ? 'CINEMATIC DOLLY TRANSITION'
+          : 'MEDIUM CLOSE-UP';
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '700 12px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(`SUBJECT: ${charName.toUpperCase()} • ${shotType}`, width - margin - 400, height - margin - 12);
+      }
+
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
       ctx.fillText('THAMILI AI VIDEO STUDIO', margin + 10, height - margin - 12);
@@ -238,6 +385,15 @@ export default function VideoPlayer({
     };
   }, [isPlaying, playbackProgress, playbackSpeed, isLooping, video]);
 
+  // Handle timeupdate from HTML5 video element
+  const handleVideoTimeUpdate = () => {
+    if (isScrubbingRef.current || !videoRef.current) return;
+    const dur = videoRef.current.duration;
+    if (dur > 0) {
+      setPlaybackProgress((videoRef.current.currentTime / dur) * 100);
+    }
+  };
+
   // Scrubbing & Seeking
   const handleScrubberSeek = useCallback((e) => {
     if (!scrubberWrapRef.current) return;
@@ -246,7 +402,11 @@ export default function VideoPlayer({
     const clickX = clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
     setPlaybackProgress(ratio * 100);
-  }, []);
+
+    if (videoRef.current && video.videoUrl && videoRef.current.duration) {
+      videoRef.current.currentTime = ratio * videoRef.current.duration;
+    }
+  }, [video.videoUrl]);
 
   const handleScrubberMouseDown = (e) => {
     isScrubbingRef.current = true;
@@ -265,7 +425,13 @@ export default function VideoPlayer({
   };
 
   const handleStepProgress = (deltaPercent) => {
-    setPlaybackProgress((prev) => Math.max(0, Math.min(100, prev + deltaPercent)));
+    setPlaybackProgress((prev) => {
+      const next = Math.max(0, Math.min(100, prev + deltaPercent));
+      if (videoRef.current && video.videoUrl && videoRef.current.duration) {
+        videoRef.current.currentTime = (next / 100) * videoRef.current.duration;
+      }
+      return next;
+    });
   };
 
   const toggleSpeed = () => {
@@ -279,8 +445,38 @@ export default function VideoPlayer({
   // Export Video Handler (MP4 / WebM / PNG)
   const handleExport = (format = 'mp4') => {
     setIsDownloadPopupOpen(false);
+
+    // Direct 1-click MP4 download for real Fal.ai generated videos
+    if (format === 'mp4' && video.videoUrl) {
+      try {
+        const link = document.createElement('a');
+        link.href = video.videoUrl;
+        link.download = video.origName || `THAMILI_AI_Video_${Date.now()}.mp4`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          if (document.body.contains(link)) document.body.removeChild(link);
+        }, 500);
+        showToast(
+          language === 'ta'
+            ? 'MP4 வீடியோ வெற்றிகரமாக பதிவிறக்கப்பட்டது!'
+            : 'MP4 video downloaded successfully!',
+          'Check'
+        );
+      } catch (_e) {
+        window.open(video.videoUrl, '_blank');
+      }
+      return;
+    }
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      if (video.videoUrl) {
+        window.open(video.videoUrl, '_blank');
+      }
+      return;
+    }
 
     if (format === 'png') {
       try {
@@ -292,7 +488,7 @@ export default function VideoPlayer({
           language === 'ta' ? 'ஸ்னாப்ஷாட் PNG பதிவிறக்கப்பட்டது!' : 'Snapshot PNG downloaded!',
           'Check'
         );
-      } catch (err) {
+      } catch (_err) {
         showToast(
           language === 'ta' ? 'ஸ்னாப்ஷாட் சேமிக்க முடியவில்லை' : 'Failed to save snapshot',
           'Trash2'
@@ -384,7 +580,7 @@ export default function VideoPlayer({
     }
   };
 
-  if (!video || !video.hasGenerated) return null;
+  if (!video) return null;
 
   const aspectClass =
     video.aspectRatio === '9:16'
@@ -400,23 +596,59 @@ export default function VideoPlayer({
         <div className="player-header-top">
           <div className="player-title-box">
             <h2 className="player-title">{t('generatedVideoOutput')}</h2>
-            <span className="player-ready-badge">
+            <span className={`player-ready-badge ${video.videoUrl ? 'ready' : ''}`}>
               <span className="ready-dot"></span>
-              {t('ready')}
+              {video.videoUrl ? t('ready') : 'Awaiting Generation'}
             </span>
           </div>
-          <div className="player-tags-group">
-            <span className="player-tag tag-ratio">{video.aspectRatio}</span>
-            <span className="player-tag tag-style">{video.style}</span>
-            {video.aiEnhanced && (
-              <span className="player-tag tag-ai-enhanced" title="AI 4K HDR Quality Enhanced">
-                <Icons.Sparkles />
-                <span>{t('hdrEnhancedTag')}</span>
-              </span>
-            )}
-          </div>
+          {video.prompt && video.prompt.trim().length > 0 && (
+            <div className="player-tags-group">
+              {video.aspectRatio && <span className="player-tag tag-ratio">{video.aspectRatio}</span>}
+              {video.style && <span className="player-tag tag-style">{video.style}</span>}
+              {(video.source === 'pixazo' || video.provider === 'pixazo') && (
+                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Zap />
+                  <span>Pixazo 4K Video</span>
+                </span>
+              )}
+              {(video.source === 'gemini' || video.provider === 'gemini') && (
+                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Sparkles />
+                  <span>Gemini Veo 4K</span>
+                </span>
+              )}
+              {(video.source === 'fal.ai' || video.provider === 'fal.ai' || video.source === 'fal' || video.provider === 'fal') && (
+                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Zap />
+                  <span>Fal.ai 4K Video</span>
+                </span>
+              )}
+              {(video.source === 'huggingface' || video.provider === 'huggingface') && (
+                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fbbf24', borderColor: 'rgba(234, 179, 8, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Zap />
+                  <span>Hugging Face Video</span>
+                </span>
+              )}
+              {video.aiEnhanced && (
+                <span className="player-tag tag-ai-enhanced" title="AI 4K HDR Quality Enhanced">
+                  <Icons.Sparkles />
+                  <span>{t('hdrEnhancedTag')}</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <p className="player-prompt-quote">"{video.prompt}"</p>
+        {video.prompt && video.prompt.trim().length > 0 && (
+          <p className="player-prompt-quote">"{video.prompt}"</p>
+        )}
+        {video.enhancedPrompt && video.enhancedPrompt !== video.prompt && (
+          <div style={{ margin: '6px 0 10px', padding: '8px 12px', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '8px', fontSize: '12px', color: '#bae6fd', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 600, color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '6px' }}>
+              <Icons.Sparkles size={12} /> Gemini 4K Enhanced:
+            </span>
+            <span>"{video.enhancedPrompt}"</span>
+          </div>
+        )}
       </div>
 
       {/* Main Video Frame */}
@@ -424,17 +656,81 @@ export default function VideoPlayer({
         ref={playerContainerRef}
         className={`video-display-frame ${aspectClass}`}
       >
-        <canvas
-          ref={canvasRef}
-          onClick={() => setIsPlaying((prev) => !prev)}
-          className="canvas-player"
-          title="Click to play/pause (Space)"
-        />
+        {video.videoUrl ? (
+          <video
+            key={video.videoUrl}
+            ref={videoRef}
+            src={video.videoUrl}
+            onClick={() => setIsPlaying((prev) => !prev)}
+            onTimeUpdate={handleVideoTimeUpdate}
+            onEnded={() => {
+              if (!isLooping) setIsPlaying(false);
+            }}
+            className="canvas-player"
+            playsInline
+            autoPlay
+            controls
+            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#020617' }}
+            title="Click to play/pause (Space)"
+          />
+        ) : video.type === 'image' && video.uploadedImage ? (
+          <canvas
+            ref={canvasRef}
+            onClick={() => setIsPlaying((prev) => !prev)}
+            className="canvas-player"
+            title="Click to play/pause (Space)"
+          />
+        ) : (
+          <div
+            className="no-video-placeholder"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
+              minHeight: '340px',
+              background: '#090d16',
+              color: '#94a3b8',
+              textAlign: 'center',
+              padding: '24px'
+            }}
+          >
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'rgba(56, 189, 248, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '14px',
+                color: '#38bdf8'
+              }}
+            >
+              <Icons.Video style={{ width: '28px', height: '28px' }} />
+            </div>
+            <strong style={{ fontSize: '16px', color: '#f1f5f9', marginBottom: '6px' }}>
+              No Video Generated Yet
+            </strong>
+            <p style={{ fontSize: '13px', maxWidth: '360px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Enter your prompt on the left and click <strong>"Generate 4K Video"</strong> to generate real AI videos with Gemini & Pixazo.
+            </p>
+          </div>
+        )}
 
         {/* Top-Left HUD Badge */}
         <div className="video-hud-live-tag">
-          <span className="live-ping"></span>
-          <span>{t('thamiliPreviewBadge')}</span>
+          {video.videoUrl ? (
+            <>
+              <span className="live-ping"></span>
+              <span>{(video.provider === 'pixazo' || video.source === 'pixazo') ? 'Pixazo 4K Stream' : video.provider === 'fal.ai' ? 'Fal.ai Stream' : video.provider === 'huggingface' ? 'Hugging Face Stream' : 'Gemini 4K Stream'}</span>
+            </>
+          ) : (
+            <span style={{ color: '#94a3b8' }}>Video Studio</span>
+          )}
         </div>
 
         {/* TOP-RIGHT CORNER: DOWNLOAD TOGGLE POPUP BUTTON */}
