@@ -82,6 +82,7 @@ export default function PromptToVideoPage() {
   const [pendingSaveVideo, setPendingSaveVideo] = useState(null);
   const [defaultSaveName, setDefaultSaveName] = useState('');
 
+  const isGeneratingRef = useRef(false);
   const previewSectionRef = useRef(null);
 
   function getSmartDefaultTitle(chars, style, prompt) {
@@ -111,10 +112,13 @@ export default function PromptToVideoPage() {
   }, [promptText, selectedCharacters]);
 
   const handleGenerate = useCallback(async () => {
+    // Prevent duplicate clicks
+    if (isGeneratingRef.current || isGenerating) return;
+
     // 1. Validate prompt
     if (!promptText.trim()) {
       showToast(
-        language === 'ta' ? 'தயவுசெய்து ஒரு பிராம்ட்டை உள்ளிடவும்' : 'Please enter a prompt first',
+        language === 'ta' ? 'தயவுசெய்து ஒரு பிராம்ட்டை உள்ளிடவும்' : 'Please enter a valid video prompt',
         'Sparkles'
       );
       return;
@@ -122,11 +126,14 @@ export default function PromptToVideoPage() {
     const finalPrompt = getAugmentedPrompt();
 
     // 2. Show loading state immediately
+    isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenerationError(null);
     setGenerationResults(null);
     setProgressPercent(15);
-    setProgressStatus('Generating with Gemini...');
+    setProgressStatus(
+      language === 'ta' ? 'உங்கள் பிராம்ட்டை தயார் செய்கிறது...' : 'Preparing your prompt...'
+    );
 
     // Required console logs
     console.log('[VIDEO] Generation started');
@@ -140,7 +147,9 @@ export default function PromptToVideoPage() {
 
     try {
       setProgressPercent(30);
-      setProgressStatus('Enhancing prompt...');
+      setProgressStatus(
+        language === 'ta' ? 'வீடியோ உருவாக்கப்படுகிறது...' : 'Generating video...'
+      );
 
       let enhancedPrompt = finalPrompt;
       try {
@@ -160,20 +169,29 @@ export default function PromptToVideoPage() {
 
       console.log('[GEMINI] Prompt enhancement completed');
       setProgressPercent(50);
-      setProgressStatus('Sending to Pixazo...');
+      setProgressStatus(
+        language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Processing video...'
+      );
 
       console.log('[PIXAZO] Starting video generation');
       console.log('Calling Pixazo');
       console.log('[PIXAZO] Request sent');
 
-      setProgressStatus('Generating video with Pixazo...');
-
       // Progress animation while Pixazo generates
       let currentPct = 50;
       const progressTimer = setInterval(() => {
-        currentPct = Math.min(94, currentPct + 4);
+        currentPct = Math.min(94, currentPct + 3);
         setProgressPercent(currentPct);
-      }, 1500);
+        if (currentPct >= 80) {
+          setProgressStatus(
+            language === 'ta' ? 'கிட்டத்தட்ட தயாராகிவிட்டது...' : 'Almost ready...'
+          );
+        } else if (currentPct >= 65) {
+          setProgressStatus(
+            language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Processing video...'
+          );
+        }
+      }, 1200);
 
       let apiResponse = null;
       try {
@@ -199,7 +217,9 @@ export default function PromptToVideoPage() {
       console.log('Displaying video');
 
       setProgressPercent(100);
-      setProgressStatus('Video ready');
+      setProgressStatus(
+        language === 'ta' ? 'வீடியோ தயாராக உள்ளது!' : 'Video ready'
+      );
 
       const videoUrl = apiResponse?.videoUrl || apiResponse?.results?.pixazo?.videoUrl;
       if (!videoUrl) {
@@ -262,12 +282,14 @@ export default function PromptToVideoPage() {
       clearTimeout(timeoutHandle);
       setIsGenerating(false);
       setProgressPercent(0);
-      const errMsg = err?.message || 'Video generation failed';
+      const errMsg = err?.message || 'Video generation failed. Please try again.';
       console.error(`[FAL.AI] Generation failed: ${errMsg}`);
       setGenerationError(errMsg);
-      showToast(`Generation failed: ${errMsg}`, 'Trash2');
+      showToast(`Generation notice: ${errMsg}`, 'AlertTriangle');
+    } finally {
+      isGeneratingRef.current = false;
     }
-  }, [promptText, getAugmentedPrompt, promptStyle, promptAspect, cameraMotion, lightingMood, activeSceneryId, selectedCharacters, isAiEnhance, showToast, language]);
+  }, [promptText, getAugmentedPrompt, promptStyle, promptAspect, cameraMotion, lightingMood, activeSceneryId, selectedCharacters, isAiEnhance, showToast, language, isGenerating]);
 
   const handleSaveProviderVideo = (providerKey) => {
     if (!generationResults) return;
@@ -430,24 +452,49 @@ export default function PromptToVideoPage() {
                     border: '1px solid rgba(239, 68, 68, 0.35)',
                     borderRadius: '12px',
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
                     color: '#fca5a5'
                   }}
                 >
-                  <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={18} />
-                  <div style={{ flex: 1, fontSize: '13px', lineHeight: 1.4 }}>
-                    <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>Generation Error</strong>
-                    <span style={{ wordBreak: 'break-word' }}>{generationError}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
+                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={18} />
+                    <div style={{ fontSize: '13px', lineHeight: 1.4 }}>
+                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
+                        {language === 'ta' ? 'வீடியோ உருவாக்க பிழை' : 'Generation Notice'}
+                      </strong>
+                      <span style={{ wordBreak: 'break-word' }}>{generationError}</span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setGenerationError(null)}
-                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
-                    title="Dismiss"
-                  >
-                    <Icons.X size={15} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={isGenerating}
+                      className="tool-btn"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        borderColor: 'rgba(239, 68, 68, 0.4)',
+                        color: '#fecaca',
+                        fontSize: '12px',
+                        padding: '5px 12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Icons.RotateCw size={13} /> {language === 'ta' ? 'மீண்டும் முயற்சி' : 'Retry'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGenerationError(null)}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                      title="Dismiss"
+                    >
+                      <Icons.X size={15} />
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -525,7 +572,13 @@ export default function PromptToVideoPage() {
               >
                 <div className="gen-btn-left">
                   <Icons.Sparkles />
-                  <span>{isGenerating ? (language === 'ta' ? 'வீடியோ உருவாக்கப்படுகிறது...' : 'Generating video...') : t('generate4kVideo')}</span>
+                  <span>
+                    {isGenerating
+                      ? (language === 'ta' ? 'உருவாக்கப்படுகிறது...' : 'Generating...')
+                      : generatedVideo?.hasGenerated
+                      ? (language === 'ta' ? 'புதிய வீடியோவை உருவாக்கவும்' : 'Generate New Video')
+                      : t('generate4kVideo')}
+                  </span>
                 </div>
                 <div className="gen-btn-right">
                   <span className="shortcut-tag">Ctrl + ↵</span>

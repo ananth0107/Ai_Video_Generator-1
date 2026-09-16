@@ -4,12 +4,14 @@ import { Icons } from './Icons';
 import ThamiliBrandLogo from './ThamiliBrandLogo';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Header({ onToggleMobileSidebar = () => {} }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { language, setLanguage, t } = useLanguage();
+  const { theme, toggleTheme, isDark } = useTheme();
 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const langMenuRef = useRef(null);
@@ -54,6 +56,17 @@ export default function Header({ onToggleMobileSidebar = () => {} }) {
     );
   };
 
+  const handleThemeToggle = () => {
+    toggleTheme();
+    const nextTheme = isDark ? 'Platinum Light' : 'Dark Luxury Studio';
+    showToast(
+      language === 'ta'
+        ? `தீம் மாற்றப்பட்டது: ${isDark ? 'வெண்மை' : 'இருள்'}`
+        : `Switched to ${nextTheme} Mode`,
+      isDark ? 'Sun' : 'Moon'
+    );
+  };
+
   return (
     <header className="thamili-top-header">
       {/* 1. LEFT COLUMN: Mobile Toggle & Breadcrumbs */}
@@ -88,11 +101,12 @@ export default function Header({ onToggleMobileSidebar = () => {} }) {
         {/* Theme Toggle Button */}
         <button
           type="button"
-          className="header-icon-tool-btn"
-          onClick={() => showToast(language === 'ta' ? 'தீம் மாற்றப்பட்டது' : 'Theme toggled', 'Sun')}
-          title={t('toggleTheme')}
+          className="header-icon-tool-btn theme-toggle-btn"
+          onClick={handleThemeToggle}
+          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Studio Mode'}
+          aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Studio Mode'}
         >
-          <Icons.Sun />
+          {isDark ? <Icons.Sun /> : <Icons.Moon />}
         </button>
 
         {/* Language Switcher Dropdown */}

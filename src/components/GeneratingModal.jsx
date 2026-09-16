@@ -49,7 +49,20 @@ export default function GeneratingModal({
         </div>
 
         {promptSummary && (
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '10px 14px', width: '100%', textAlign: 'left', fontSize: '13px', color: '#475569', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{
+            background: 'var(--color-bg-subtle)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            width: '100%',
+            textAlign: 'left',
+            fontSize: '13px',
+            color: 'var(--color-text-body)',
+            fontStyle: 'italic',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
             "{promptSummary}"
           </div>
         )}
@@ -59,7 +72,13 @@ export default function GeneratingModal({
             type="button"
             onClick={onCancel}
             className="tool-btn"
-            style={{ fontSize: '13px', padding: '8px 18px', color: '#64748B', borderColor: '#CBD5E1', marginTop: '6px' }}
+            style={{
+              fontSize: '13px',
+              padding: '8px 18px',
+              color: 'var(--color-text-muted)',
+              borderColor: 'var(--color-border)',
+              marginTop: '6px'
+            }}
           >
             {t('cancel')}
           </button>

@@ -49,6 +49,27 @@ async function toBlob(imageInput) {
  * Model: fal-ai/ltx-video
  *
 /**
+ * Helper to normalize errors into user-friendly messages
+ */
+function normalizeErrorMessage(err, defaultMsg = 'Video generation failed. Please try again.') {
+  if (!err) return defaultMsg;
+  const msg = typeof err === 'string' ? err : err.message || '';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ENOTFOUND')) {
+    return 'Unable to connect to the server. Check your internet connection and try again.';
+  }
+  if (msg.includes('timed out') || msg.includes('Timeout') || msg.includes('aborted')) {
+    return 'Video generation request timed out. Please try again.';
+  }
+  if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('API key')) {
+    return 'Authentication issue with the video service. Please verify your settings and API keys.';
+  }
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('quota')) {
+    return 'Service rate limit reached. Please wait a moment and retry.';
+  }
+  return msg || defaultMsg;
+}
+
+/**
  * Step 1: Enhance prompt using Gemini API via backend proxy
  *
  * @param {string} prompt User prompt
@@ -64,10 +85,14 @@ export async function enhancePrompt(prompt, options = {}) {
   } = options;
 
   console.log('[Frontend] Calling /api/enhance-prompt...');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for Gemini text
+
   try {
     const response = await fetch('/api/enhance-prompt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         prompt,
         style,
@@ -76,10 +101,11 @@ export async function enhancePrompt(prompt, options = {}) {
         characters
       })
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) {
-      console.warn('[Frontend] Gemini enhancement failed, fallback to original:', data.error);
+      console.warn('[Frontend] Gemini enhancement fallback:', data.error);
       return {
         success: false,
         enhancedPrompt: prompt,
@@ -90,18 +116,19 @@ export async function enhancePrompt(prompt, options = {}) {
 
     return data;
   } catch (err) {
+    clearTimeout(timeoutId);
     console.warn('[Frontend] Gemini enhance network error:', err.message);
     return {
       success: false,
       enhancedPrompt: prompt,
       originalPrompt: prompt,
-      error: err.message
+      error: normalizeErrorMessage(err, 'Prompt enhancement unavailable')
     };
   }
 }
 
 /**
- * Step 2: Generate Video using Fal.ai (with Gemini enhanced prompt)
+ * Step 2: Generate Video using Fal.ai / Pixazo (with Gemini enhanced prompt)
  *
  * @param {string} prompt User prompt text
  * @param {object} options Options including enhancedPrompt, resolution, aspectRatio, onProgress callback
@@ -116,12 +143,16 @@ export async function generateTextToVideo(prompt, options = {}) {
     onProgress = () => {}
   } = options;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute safety timeout
+
   try {
     const response = await fetch('/api/generate-video', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         prompt,
         enhancedPrompt,
@@ -130,20 +161,23 @@ export async function generateTextToVideo(prompt, options = {}) {
         characters
       })
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({}));
 
-    if (!response.ok || (!data.success && !data.videoUrl && !data.results?.fal?.videoUrl)) {
-      const errorMsg = data.error || data.detail || data.results?.fal?.error || `Server returned HTTP ${response.status}`;
+    if (!response.ok || (!data.success && !data.videoUrl && !data.results?.fal?.videoUrl && !data.results?.pixazo?.videoUrl)) {
+      const errorMsg = data.error || data.detail || data.results?.fal?.error || data.results?.pixazo?.error || `Server returned HTTP ${response.status}`;
       console.error('[Frontend] Video generation error:', errorMsg);
-      throw new Error(errorMsg);
+      throw new Error(normalizeErrorMessage(errorMsg));
     }
 
     console.log('[Frontend] Generation results received:', data);
     return data;
   } catch (err) {
-    console.error('[Prompt-to-Video] Video generation failed:', err.message);
-    throw err;
+    clearTimeout(timeoutId);
+    const friendlyMsg = normalizeErrorMessage(err, 'Video generation failed. Please try again.');
+    console.error('[Prompt-to-Video] Video generation failed:', friendlyMsg);
+    throw new Error(friendlyMsg);
   }
 }
 
@@ -166,14 +200,17 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
   );
   const finalPrompt = interpretation.interpretedPrompt;
 
-  onProgress(15, 'Preparing reference image for Pixazo...');
+  onProgress(15, 'Preparing reference image...');
 
   console.log('[PIXAZO FRONTEND REQUEST: Image-to-Video]', {
     prompt: finalPrompt,
     aspectRatio
   });
 
-  onProgress(35, 'Sending request to Pixazo LTX-Video Gateway...');
+  onProgress(35, 'Generating video frames...');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout
 
   try {
     const response = await fetch('/api/generate-image-to-video', {
@@ -181,22 +218,24 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
       headers: {
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         imageUrl: imageInput,
         prompt: finalPrompt,
         aspectRatio
       })
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok || (!data.success && !data.videoUrl)) {
       const errorMsg = data.error || data.message || `Server returned HTTP ${response.status}`;
       console.error('[Frontend] Image-to-video error:', errorMsg);
-      throw new Error(errorMsg);
+      throw new Error(normalizeErrorMessage(errorMsg));
     }
 
-    onProgress(95, 'Encoding video frames from Pixazo...');
+    onProgress(95, 'Processing video...');
     console.log('[PIXAZO FRONTEND RESPONSE: Image-to-Video]', data);
 
     return {
@@ -210,8 +249,10 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
       interpretation
     };
   } catch (err) {
-    console.error('[PIXAZO FRONTEND ERROR: Image-to-Video]', err);
-    throw err;
+    clearTimeout(timeoutId);
+    const friendlyMsg = normalizeErrorMessage(err, 'Image to video generation failed. Please try again.');
+    console.error('[PIXAZO FRONTEND ERROR: Image-to-Video]', friendlyMsg);
+    throw new Error(friendlyMsg);
   }
 }
 

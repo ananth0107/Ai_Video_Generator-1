@@ -39,10 +39,10 @@ export default function SavedPage() {
                 <Icons.BookmarkCheck />
               </div>
               <div>
-                <span className="tag-badge tag-indigo" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                <span className="studio-pill-badge" style={{ marginBottom: '4px', display: 'inline-block' }}>
                   {item.type}
                 </span>
-                <p style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>
+                <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-title)' }}>
                   "{item.title}"
                 </p>
               </div>

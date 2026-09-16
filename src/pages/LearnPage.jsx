@@ -47,13 +47,13 @@ export default function LearnPage() {
             <div className="card-top-accent accent-blue-purple"></div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span className="tag-badge tag-indigo">{tut.level}</span>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>{tut.duration}</span>
+                <span className="studio-pill-badge">{tut.level}</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{tut.duration}</span>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-title)', marginBottom: '8px' }}>
                 {tut.title}
               </h3>
-              <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
                 {tut.desc}
               </p>
             </div>

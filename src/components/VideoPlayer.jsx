@@ -32,6 +32,8 @@ export default function VideoPlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1); // 0.5, 1, 1.5, 2
   const [isMuted, setIsMuted] = useState(true);
   const [isLooping, setIsLooping] = useState(true);
+  const [videoLoadError, setVideoLoadError] = useState(false);
+  const [isVideoBuffering, setIsVideoBuffering] = useState(false);
 
   // Download popup toggle state
   const [isDownloadPopupOpen, setIsDownloadPopupOpen] = useState(false);
@@ -52,6 +54,7 @@ export default function VideoPlayer({
   useEffect(() => {
     if (video?.videoUrl) {
       console.log('[Frontend] VideoPlayer assigned src:', video.videoUrl);
+      setVideoLoadError(false);
     }
   }, [video?.videoUrl]);
 
@@ -657,22 +660,125 @@ export default function VideoPlayer({
         className={`video-display-frame ${aspectClass}`}
       >
         {video.videoUrl ? (
-          <video
-            key={video.videoUrl}
-            ref={videoRef}
-            src={video.videoUrl}
-            onClick={() => setIsPlaying((prev) => !prev)}
-            onTimeUpdate={handleVideoTimeUpdate}
-            onEnded={() => {
-              if (!isLooping) setIsPlaying(false);
-            }}
-            className="canvas-player"
-            playsInline
-            autoPlay
-            controls
-            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#020617' }}
-            title="Click to play/pause (Space)"
-          />
+          videoLoadError ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                minHeight: '340px',
+                background: '#090d16',
+                color: '#f87171',
+                textAlign: 'center',
+                padding: '24px'
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '14px',
+                  color: '#ef4444'
+                }}
+              >
+                <Icons.AlertTriangle style={{ width: '28px', height: '28px' }} />
+              </div>
+              <strong style={{ fontSize: '15px', color: '#fca5a5', marginBottom: '6px' }}>
+                {language === 'ta' ? 'வீடியோவை ஏற்ற முடியவில்லை' : 'Unable to load video stream'}
+              </strong>
+              <p style={{ fontSize: '13px', maxWidth: '360px', color: '#94a3b8', margin: '0 0 16px', lineHeight: 1.5 }}>
+                {language === 'ta'
+                  ? 'வீடியோவை நேரடியாக பதிவிறக்கம் செய்யலாம் அல்லது மீண்டும் இயக்கலாம்.'
+                  : 'You can download the video directly or retry playback.'}
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a
+                  href={video.videoUrl}
+                  download={video.origName || 'video.mp4'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tool-btn"
+                  style={{
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Icons.Download size={15} /> {language === 'ta' ? 'பதிவிறக்கு' : 'Download Video'}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVideoLoadError(false);
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                      videoRef.current.play().catch(() => {});
+                    }
+                  }}
+                  className="tool-btn"
+                  style={{ fontSize: '13px', padding: '8px 16px' }}
+                >
+                  <Icons.RotateCw size={14} /> {language === 'ta' ? 'மீண்டும் இயக்கு' : 'Retry'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <video
+                key={video.videoUrl}
+                ref={videoRef}
+                src={video.videoUrl}
+                onClick={() => setIsPlaying((prev) => !prev)}
+                onTimeUpdate={handleVideoTimeUpdate}
+                onError={() => setVideoLoadError(true)}
+                onWaiting={() => setIsVideoBuffering(true)}
+                onPlaying={() => setIsVideoBuffering(false)}
+                onCanPlay={() => setIsVideoBuffering(false)}
+                onEnded={() => {
+                  if (!isLooping) setIsPlaying(false);
+                }}
+                className="canvas-player"
+                playsInline
+                autoPlay
+                controls
+                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#020617' }}
+                title="Click to play/pause (Space)"
+              />
+              {isVideoBuffering && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(2, 6, 23, 0.45)',
+                    backdropFilter: 'blur(2px)',
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <div className="spinner-pulse" style={{ width: '40px', height: '40px', color: '#38bdf8' }}>
+                    <Icons.Loader />
+                  </div>
+                </div>
+              )}
+            </>
+          )
         ) : video.type === 'image' && video.uploadedImage ? (
           <canvas
             ref={canvasRef}

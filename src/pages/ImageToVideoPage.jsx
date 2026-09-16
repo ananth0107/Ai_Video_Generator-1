@@ -74,6 +74,7 @@ export default function ImageToVideoPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
+  const [generationError, setGenerationError] = useState(null);
 
   // Video Output State
   const [generatedVideo, setGeneratedVideo] = useState({
@@ -94,6 +95,7 @@ export default function ImageToVideoPage() {
   const [pendingSaveVideo, setPendingSaveVideo] = useState(null);
   const [defaultSaveName, setDefaultSaveName] = useState('');
 
+  const isGeneratingRef = useRef(false);
   const fileInputRef = useRef(null);
   const previewSectionRef = useRef(null);
 
@@ -149,6 +151,8 @@ export default function ImageToVideoPage() {
   }, [motionPrompt, selectedCharacters]);
 
   const handleGenerate = useCallback(async () => {
+    if (isGeneratingRef.current || isGenerating) return;
+
     if (!uploadedImage) {
       showToast(
         language === 'ta' ? 'முதலில் ஒரு படத்தைப் பதிவேற்றவும்' : 'Please upload an image first',
@@ -159,33 +163,41 @@ export default function ImageToVideoPage() {
 
     const finalPrompt = getAugmentedPrompt();
 
+    isGeneratingRef.current = true;
     setIsGenerating(true);
-    setProgressPercent(10);
+    setGenerationError(null);
+    setProgressPercent(15);
     setProgressStatus(
       language === 'ta'
-        ? 'Pixazo AI கிளஸ்டருடன் இணைகிறது...'
-        : 'Connecting to Pixazo Neural Gateway...'
+        ? 'உங்கள் பிராம்ட்டை தயார் செய்கிறது...'
+        : 'Preparing your prompt...'
     );
 
     // Live progress pulse timer
-    let currentPct = 10;
+    let currentPct = 15;
     const progressTimer = setInterval(() => {
-      currentPct = Math.min(88, currentPct + 3);
+      currentPct = Math.min(94, currentPct + 3);
       setProgressPercent(currentPct);
-      if (currentPct > 30 && currentPct <= 60) {
+      if (currentPct >= 80) {
         setProgressStatus(
           language === 'ta'
-            ? 'படத்திலிருந்து Pixazo இயக்க விசை பிரேம்கள் கணக்கிடப்படுகின்றன...'
-            : 'Synthesizing temporal motion latents on Pixazo GPU...'
+            ? 'கிட்டத்தட்ட தயாராகிவிட்டது...'
+            : 'Almost ready...'
         );
-      } else if (currentPct > 60) {
+      } else if (currentPct >= 50) {
         setProgressStatus(
           language === 'ta'
-            ? 'Pixazo MP4 வீடியோ ஸ்ட்ரீம் என்கோடிங் செய்யப்படுகிறது...'
-            : 'Encoding high-definition Pixazo MP4 stream...'
+            ? 'வீடியோ செயலாக்கப்படுகிறது...'
+            : 'Processing video...'
+        );
+      } else if (currentPct >= 25) {
+        setProgressStatus(
+          language === 'ta'
+            ? 'வீடியோ உருவாக்கப்படுகிறது...'
+            : 'Generating video...'
         );
       }
-    }, 750);
+    }, 1100);
 
     let pixazoVideoResult = null;
     try {
@@ -201,30 +213,34 @@ export default function ImageToVideoPage() {
       clearInterval(progressTimer);
       setIsGenerating(false);
       console.error('[ImageToVideoPage Pixazo Error]', err);
-      const errMsg = err?.body?.detail || err?.message || 'Image-to-video generation failed';
+      const errMsg = err?.body?.detail || err?.message || 'Image-to-video generation failed. Please try again.';
+      setGenerationError(errMsg);
       showToast(
         language === 'ta'
-          ? `Pixazo பிழை: ${errMsg}`
-          : `Pixazo Error: ${errMsg}`,
-        'Trash2'
+          ? `பிழை: ${errMsg}`
+          : `Generation notice: ${errMsg}`,
+        'AlertTriangle'
       );
       return;
     } finally {
       clearInterval(progressTimer);
+      isGeneratingRef.current = false;
     }
 
     if (!pixazoVideoResult || !pixazoVideoResult.videoUrl) {
       setIsGenerating(false);
+      const errMsg = 'No video URL received from Pixazo';
+      setGenerationError(errMsg);
       showToast(
-        language === 'ta' ? 'வீடியோ URL கிடைக்கவில்லை' : 'No video URL received from Pixazo',
-        'Trash2'
+        language === 'ta' ? 'வீடியோ URL கிடைக்கவில்லை' : errMsg,
+        'AlertTriangle'
       );
       return;
     }
 
     setProgressPercent(100);
     setProgressStatus(
-      language === 'ta' ? 'வீடியோ வெற்றிகரமாக முடிக்கப்பட்டது!' : 'Video generation completed!'
+      language === 'ta' ? 'வீடியோ தயாராக உள்ளது!' : 'Video ready'
     );
 
     setTimeout(async () => {
@@ -415,6 +431,62 @@ export default function ImageToVideoPage() {
             <div className="card-top-accent accent-purple-pink"></div>
 
             <div className="creation-card-inner">
+              {generationError && (
+                <div
+                  className="generation-error-notice"
+                  style={{
+                    marginBottom: '16px',
+                    padding: '12px 16px',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    color: '#fca5a5'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
+                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={18} />
+                    <div style={{ fontSize: '13px', lineHeight: 1.4 }}>
+                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
+                        {language === 'ta' ? 'வீடியோ உருவாக்க பிழை' : 'Generation Notice'}
+                      </strong>
+                      <span style={{ wordBreak: 'break-word' }}>{generationError}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={isGenerating || !uploadedImage}
+                      className="tool-btn"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        borderColor: 'rgba(239, 68, 68, 0.4)',
+                        color: '#fecaca',
+                        fontSize: '12px',
+                        padding: '5px 12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Icons.RotateCw size={13} /> {language === 'ta' ? 'மீண்டும் முயற்சி' : 'Retry'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGenerationError(null)}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                      title="Dismiss"
+                    >
+                      <Icons.X size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* 1 & 2. Source Image & Motion Prompt Side-by-Side */}
               <div className="image-motion-split-grid">
                 {/* 1. Source Image Upload & Preview Box */}
@@ -464,10 +536,7 @@ export default function ImageToVideoPage() {
                       e.preventDefault();
                       setIsDragOver(true);
                     }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      setIsDragOver(false);
-                    }}
+                    onDragLeave={() => setIsDragOver(false)}
                     onDrop={(e) => {
                       e.preventDefault();
                       setIsDragOver(false);
@@ -592,7 +661,13 @@ export default function ImageToVideoPage() {
               >
                 <div className="gen-btn-left">
                   <Icons.Sparkles />
-                  <span>{t('animateImageToVideo')}</span>
+                  <span>
+                    {isGenerating
+                      ? (language === 'ta' ? 'உருவாக்கப்படுகிறது...' : 'Generating...')
+                      : generatedVideo?.videoUrl
+                      ? (language === 'ta' ? 'புதிய வீடியோவை உருவாக்கவும்' : 'Generate New Video')
+                      : t('animateImageToVideo')}
+                  </span>
                 </div>
                 <div className="gen-btn-right">
                   <span className="shortcut-tag">Ctrl + ↵</span>
