@@ -219,7 +219,7 @@ export default function UserProfileMenu({ onCloseSidebar = () => {} }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-                  Pixazo (T2V/I2V):
+                  OpenRouter Credits:
                 </span>
                 <strong style={{ color: '#e2e8f0' }}>{usage.hfUnits.toLocaleString()}</strong>
               </div>

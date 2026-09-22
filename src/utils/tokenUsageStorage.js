@@ -39,10 +39,10 @@ export function consumeTokens(provider = 'gemini', amount = 100) {
 
     if (provider === 'gemini') {
       newGemini += amount;
-    } else if (provider === 'pixazo' || provider === 'fal' || provider === 'fal.ai' || provider === 'huggingface') {
-      newHf += amount;
-    } else {
+    } else if (provider === 'openrouter' || provider === 'prompt') {
       newPrompt += amount;
+    } else {
+      newHf += amount;
     }
 
     const updated = {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
-import { testFalConnection } from '../services/falAiService';
+import { testBackendConnection } from '../services/videoService';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
@@ -13,9 +13,9 @@ export default function SettingsPage() {
   const handleTestConnection = async () => {
     setTestingToken(true);
     setTokenStatus(null);
-    showToast('Testing Pixazo & Gemini backend connection...', 'Sparkles');
+    showToast('Testing Gemini & OpenRouter backend connection...', 'Sparkles');
 
-    const res = await testFalConnection();
+    const res = await testBackendConnection();
     setTokenStatus(res);
     setTestingToken(false);
 
@@ -38,26 +38,26 @@ export default function SettingsPage() {
           <h1 className="main-title">Studio Settings</h1>
           <span className="version-badge"><Icons.Settings /> Configuration</span>
         </div>
-        <p className="main-subtitle">Manage generation defaults, Pixazo API connection, and workspace preferences.</p>
+        <p className="main-subtitle">Manage generation defaults, Gemini API connection, and workspace preferences.</p>
       </div>
 
       <div className="creation-card active-card" style={{ cursor: 'default' }}>
         <div className="card-top-accent accent-blue-purple"></div>
 
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          {/* AI Providers Secure Integration Section */}
-          <div className="form-group" style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <form onSubmit={handleSave} className="step-group">
+          {/* API Keys Configuration Status */}
+          <div className="form-group" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label className="control-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                 <Icons.Zap />
-                <span>AI Providers Integration (Pixazo & Google Gemini)</span>
+                <span>AI Providers Integration (Google Gemini & OpenRouter)</span>
               </label>
               <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <Icons.Check /> Securely managed in .env
               </span>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
-              Your <code>PIXAZO_API_KEY</code> and <code>GEMINI_API_KEY</code> are loaded directly from <code>.env</code> on the backend and are never exposed to frontend client code.
+              Your <code>GEMINI_API_KEY</code> and <code>OPENROUTER_API_KEY</code> are loaded directly from <code>.env</code> on the backend and are never exposed to frontend client code.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -65,7 +65,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   readOnly
-                  value="•••••••••••••••••••••••••••••••• (PIXAZO_API_KEY in .env)"
+                  value="•••••••••••••••••••••••••••••••• (OPENROUTER_API_KEY in .env)"
                   className="thamili-textarea"
                   style={{ height: '44px', padding: '10px 14px', flex: 1, fontFamily: 'monospace', opacity: 0.85, cursor: 'not-allowed' }}
                   title="Configured securely in .env"

@@ -125,9 +125,9 @@ export default function VideoPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Real-time Canvas Neural Video Simulation
+  // Real-time Canvas Neural Video Simulation (Only for Image-to-Video reference preview)
   useEffect(() => {
-    if (video.videoUrl) return;
+    if (video.videoUrl || video.type !== 'image' || !video.uploadedImage) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -185,6 +185,14 @@ export default function VideoPlayer({
         const panX = 0;
         const panY = 0;
 
+        // Draw crisp studio backdrop for logos & transparent assets
+        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+        bgGrad.addColorStop(0, '#0a0d14');
+        bgGrad.addColorStop(0.5, '#0f172a');
+        bgGrad.addColorStop(1, '#050811');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
         ctx.save();
         ctx.translate(width / 2 + panX, height / 2 + panY);
         ctx.scale(scale, scale);
@@ -192,7 +200,12 @@ export default function VideoPlayer({
         const imgRatio = img.width / img.height;
         const canvasRatio = width / height;
         let dw, dh;
-        if (imgRatio > canvasRatio) {
+        // For brand logos or smaller graphics, contain cleanly with elegant padding
+        if (img.width < 700 && img.height < 600) {
+          const fitScale = Math.min((width * 0.65) / img.width, (height * 0.65) / img.height);
+          dw = img.width * fitScale;
+          dh = img.height * fitScale;
+        } else if (imgRatio > canvasRatio) {
           dh = height;
           dw = height * imgRatio;
         } else {
@@ -594,66 +607,6 @@ export default function VideoPlayer({
 
   return (
     <div className="video-player-card">
-      {/* Header Info */}
-      <div className="player-card-header">
-        <div className="player-header-top">
-          <div className="player-title-box">
-            <h2 className="player-title">{t('generatedVideoOutput')}</h2>
-            <span className={`player-ready-badge ${video.videoUrl ? 'ready' : ''}`}>
-              <span className="ready-dot"></span>
-              {video.videoUrl ? t('ready') : 'Awaiting Generation'}
-            </span>
-          </div>
-          {video.prompt && video.prompt.trim().length > 0 && (
-            <div className="player-tags-group">
-              {video.aspectRatio && <span className="player-tag tag-ratio">{video.aspectRatio}</span>}
-              {video.style && <span className="player-tag tag-style">{video.style}</span>}
-              {(video.source === 'pixazo' || video.provider === 'pixazo') && (
-                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <Icons.Zap />
-                  <span>Pixazo 4K Video</span>
-                </span>
-              )}
-              {(video.source === 'gemini' || video.provider === 'gemini') && (
-                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <Icons.Sparkles />
-                  <span>Gemini Veo 4K</span>
-                </span>
-              )}
-              {(video.source === 'fal.ai' || video.provider === 'fal.ai' || video.source === 'fal' || video.provider === 'fal') && (
-                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <Icons.Zap />
-                  <span>Fal.ai 4K Video</span>
-                </span>
-              )}
-              {(video.source === 'huggingface' || video.provider === 'huggingface') && (
-                <span className="player-tag tag-hf-badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fbbf24', borderColor: 'rgba(234, 179, 8, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <Icons.Zap />
-                  <span>Hugging Face Video</span>
-                </span>
-              )}
-              {video.aiEnhanced && (
-                <span className="player-tag tag-ai-enhanced" title="AI 4K HDR Quality Enhanced">
-                  <Icons.Sparkles />
-                  <span>{t('hdrEnhancedTag')}</span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        {video.prompt && video.prompt.trim().length > 0 && (
-          <p className="player-prompt-quote">"{video.prompt}"</p>
-        )}
-        {video.enhancedPrompt && video.enhancedPrompt !== video.prompt && (
-          <div style={{ margin: '6px 0 10px', padding: '8px 12px', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '8px', fontSize: '12px', color: '#bae6fd', lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 600, color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '6px' }}>
-              <Icons.Sparkles size={12} /> Gemini 4K Enhanced:
-            </span>
-            <span>"{video.enhancedPrompt}"</span>
-          </div>
-        )}
-      </div>
-
       {/* Main Video Frame */}
       <div
         ref={playerContainerRef}
@@ -819,10 +772,12 @@ export default function VideoPlayer({
               <Icons.Video style={{ width: '28px', height: '28px' }} />
             </div>
             <strong style={{ fontSize: '16px', color: '#f1f5f9', marginBottom: '6px' }}>
-              No Video Generated Yet
+              {language === 'ta' ? 'வீடியோ இன்னும் உருவாக்கப்படவில்லை' : 'No Video Generated Yet'}
             </strong>
             <p style={{ fontSize: '13px', maxWidth: '360px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              Enter your prompt on the left and click <strong>"Generate 4K Video"</strong> to generate real AI videos with Gemini & Pixazo.
+              {video.type === 'image'
+                ? (language === 'ta' ? 'இடதுபுறத்தில் ஒரு படத்தைப் பதிவேற்றி "உருவாக்கு" பொத்தானை அழுத்தவும்.' : 'Upload an image on the left and click "Generate" to generate real AI videos.')
+                : (language === 'ta' ? 'இடதுபுறத்தில் உங்கள் பிராம்ட்டை உள்ளிட்டு "உருவாக்கு" பொத்தானை அழுத்தவும்.' : 'Enter your prompt on the left and click "Generate" to generate real AI videos.')}
             </p>
           </div>
         )}
@@ -832,7 +787,7 @@ export default function VideoPlayer({
           {video.videoUrl ? (
             <>
               <span className="live-ping"></span>
-              <span>{(video.provider === 'pixazo' || video.source === 'pixazo') ? 'Pixazo 4K Stream' : video.provider === 'fal.ai' ? 'Fal.ai Stream' : video.provider === 'huggingface' ? 'Hugging Face Stream' : 'Gemini 4K Stream'}</span>
+              <span>Gemini 4K Stream</span>
             </>
           ) : (
             <span style={{ color: '#94a3b8' }}>Video Studio</span>
@@ -856,7 +811,7 @@ export default function VideoPlayer({
           {isDownloadPopupOpen && (
             <div className="video-download-popup-menu">
               <div className="download-popup-header">
-                <span>{t('exportOptions')}</span>
+                <span>{t('exportOptions', 'Export & Video Actions')}</span>
               </div>
               <button
                 type="button"
@@ -902,13 +857,31 @@ export default function VideoPlayer({
 
               <div className="popup-menu-divider"></div>
 
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDownloadPopupOpen(false);
+                  if (onSaveToggle) onSaveToggle();
+                }}
+                className="popup-menu-item"
+              >
+                <div className="menu-item-icon" style={{ background: video.isSaved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(234, 179, 8, 0.15)', color: video.isSaved ? '#34d399' : '#fbbf24' }}>
+                  {video.isSaved ? <Icons.BookmarkCheck /> : <Icons.Bookmark />}
+                </div>
+                <div className="menu-item-text">
+                  <strong>{video.isSaved ? (language === 'ta' ? 'சேமிக்கப்பட்டது' : 'Saved') : (language === 'ta' ? 'சேமிக்கவும்' : 'Save Video')}</strong>
+                  <span>{video.isSaved ? (language === 'ta' ? 'வரலாற்றில் சேமிக்கப்பட்டது' : 'Saved to history') : (language === 'ta' ? 'வரலாற்றில் சேமி' : 'Save to your video history')}</span>
+                </div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   showToast(
                     language === 'ta'
-                      ? 'வீடியோ இணைப்பு நகலெடுக்கப்பட்டது!'
+                      ? 'பகிர்வு இணைப்பு நகலெடுக்கப்பட்டது!'
                       : 'Share link copied to clipboard!',
                     'Share2'
                   );
@@ -916,12 +889,12 @@ export default function VideoPlayer({
                 }}
                 className="popup-menu-item"
               >
-                <div className="menu-item-icon">
+                <div className="menu-item-icon" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
                   <Icons.Share2 />
                 </div>
                 <div className="menu-item-text">
-                  <strong>{t('copyLink')}</strong>
-                  <span>{language === 'ta' ? 'உடனடி பகிர்வு' : 'Share instant playback'}</span>
+                  <strong>{t('share', 'Share')}</strong>
+                  <span>{language === 'ta' ? 'இணைப்பை நகலெடு' : 'Copy link to share'}</span>
                 </div>
               </button>
             </div>
@@ -1074,52 +1047,6 @@ export default function VideoPlayer({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Bottom Actions Row */}
-      <div className="player-card-footer">
-        <div className="player-actions-left">
-          {onRegenerate && (
-            <button
-              type="button"
-              onClick={onRegenerate}
-              className="player-footer-btn"
-            >
-              <Icons.RotateCw />
-              <span>{t('regenerate')}</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={onSaveToggle}
-            className={`player-footer-btn ${video.isSaved ? 'saved' : ''}`}
-          >
-            {video.isSaved ? <Icons.BookmarkCheck /> : <Icons.Bookmark />}
-            <span>{video.isSaved ? t('saved') : t('save')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              showToast(
-                language === 'ta'
-                  ? 'பகிர்வு இணைப்பு நகலெடுக்கப்பட்டது!'
-                  : 'Share link copied to clipboard!',
-                'Share2'
-              );
-            }}
-            className="player-footer-btn"
-          >
-            <Icons.Share2 />
-            <span>{t('share')}</span>
-          </button>
-        </div>
-
-        <div className="player-engine-tag">
-          <span>{t('neuralEngineTag')}</span>
         </div>
       </div>
     </div>

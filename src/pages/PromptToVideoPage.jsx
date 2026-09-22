@@ -1,22 +1,30 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from '../components/Icons';
+import TamilParticleOrb from '../components/TamilParticleOrb';
 import GeneratingModal from '../components/GeneratingModal';
 import VideoPlayer from '../components/VideoPlayer';
-import CharacterSelectDropdown from '../components/CharacterSelectDropdown';
 import SaveVideoModal from '../components/History/SaveVideoModal';
 import { saveHistoryItem, deleteHistoryItem, captureCanvasThumbnail } from '../utils/historyStorage';
 import { useToast } from '../context/ToastContext';
 import { useCharacters } from '../context/CharacterContext';
 import { useLanguage } from '../context/LanguageContext';
-import { generateTextToVideo, enhancePrompt } from '../services/falAiService';
+import { generateTextToVideo, enhancePrompt } from '../services/videoService';
+import { enhancePromptWithOpenRouter } from '../services/openrouterService';
 import { consumeTokens } from '../utils/tokenUsageStorage';
 
 export default function PromptToVideoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
-  const { selectedCharacters } = useCharacters();
+  const {
+    allCharacters,
+    selectedCharacters,
+    selectedCharacterIds,
+    toggleSelectCharacter,
+    removeSelectedCharacter,
+    clearSelectedCharacters
+  } = useCharacters();
   const { t, language } = useLanguage();
 
   const [promptText, setPromptText] = useState(
@@ -27,8 +35,84 @@ export default function PromptToVideoPage() {
   const [cameraMotion, setCameraMotion] = useState('Smooth Zoom');
   const [lightingMood, setLightingMood] = useState('Volumetric Sun');
   const [isAiEnhance, setIsAiEnhance] = useState(true);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
   const [activeSceneryId, setActiveSceneryId] = useState(location.state?.sceneryId || null);
   const [generationResults, setGenerationResults] = useState(null);
+
+  // Character picker popover state for + button inside prompt box
+  const [isCharPickerOpen, setIsCharPickerOpen] = useState(false);
+  const [charSearch, setCharSearch] = useState('');
+  const charPickerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (charPickerRef.current && !charPickerRef.current.contains(e.target)) {
+        setIsCharPickerOpen(false);
+      }
+    };
+    if (isCharPickerOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isCharPickerOpen]);
+
+  const filteredCharacters = allCharacters.filter((char) => {
+    if (!charSearch.trim()) return true;
+    const q = charSearch.toLowerCase();
+    return (
+      char.name.toLowerCase().includes(q) ||
+      (char.role && char.role.toLowerCase().includes(q)) ||
+      (char.category && char.category.toLowerCase().includes(q))
+    );
+  });
+
+  const handleToggleCharacter = (character) => {
+    const wasSelected = selectedCharacterIds.includes(character.id);
+    toggleSelectCharacter(character.id);
+    if (!wasSelected) {
+      handleInsertCharacterIntoPrompt(character);
+    } else {
+      setPromptText((prev) => {
+        const regex = new RegExp(`@${character.name}\\s*`, 'gi');
+        return prev.replace(regex, '').trim();
+      });
+    }
+  };
+
+  const handleRemoveCharacter = (charId, charName) => {
+    removeSelectedCharacter(charId);
+    if (charName) {
+      setPromptText((prev) => {
+        const regex = new RegExp(`@${charName}\\s*`, 'gi');
+        return prev.replace(regex, '').trim();
+      });
+    }
+  };
+
+  // Generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [progressStatus, setProgressStatus] = useState('');
+  const [generationError, setGenerationError] = useState(null);
+  const [hasGenerated, setHasGenerated] = useState(
+    Boolean(location.state?.videoItem?.hasGenerated || location.state?.videoItem?.videoUrl)
+  );
+
+  // Generated Video state - starts empty until real AI output arrives
+  const [generatedVideo, setGeneratedVideo] = useState({
+    hasGenerated: Boolean(location.state?.videoItem?.hasGenerated || location.state?.videoItem?.videoUrl),
+    type: 'prompt',
+    prompt: location.state?.presetPrompt || '',
+    aspectRatio: location.state?.presetAspect || '16:9',
+    style: location.state?.presetStyle || 'Cinematic',
+    sceneryId: null,
+    characters: location.state?.presetPrompt && selectedCharacters.length > 0 ? selectedCharacters : [],
+    aiEnhanced: true,
+    videoUrl: location.state?.videoItem?.videoUrl || null,
+    isSaved: false
+  });
 
   useEffect(() => {
     if (location.state?.presetPrompt) {
@@ -54,28 +138,9 @@ export default function PromptToVideoPage() {
         ...location.state.videoItem,
         hasGenerated: true
       });
+      setHasGenerated(true);
     }
   }, [location.state]);
-
-  // Generation state
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [progressStatus, setProgressStatus] = useState('');
-  const [generationError, setGenerationError] = useState(null);
-
-  // Generated Video state - No mock video, starts empty until real Fal.ai output arrives
-  const [generatedVideo, setGeneratedVideo] = useState({
-    hasGenerated: false,
-    type: 'prompt',
-    prompt: location.state?.presetPrompt || '',
-    aspectRatio: location.state?.presetAspect || '16:9',
-    style: location.state?.presetStyle || 'Cinematic',
-    sceneryId: null,
-    characters: location.state?.presetPrompt && selectedCharacters.length > 0 ? selectedCharacters : [],
-    aiEnhanced: true,
-    videoUrl: null,
-    isSaved: false
-  });
 
   // Save to History modal state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -83,7 +148,46 @@ export default function PromptToVideoPage() {
   const [defaultSaveName, setDefaultSaveName] = useState('');
 
   const isGeneratingRef = useRef(false);
+  const currentRequestIdRef = useRef(0);
   const previewSectionRef = useRef(null);
+
+  const handleNewChat = useCallback(() => {
+    currentRequestIdRef.current++;
+    isGeneratingRef.current = false;
+    setPromptText('');
+    setPromptAspect('16:9');
+    setPromptStyle('Cinematic');
+    setCameraMotion('Smooth Zoom');
+    setLightingMood('Volumetric Sun');
+    setIsAiEnhance(true);
+    setActiveSceneryId(null);
+    setGenerationError(null);
+    setGenerationResults(null);
+    setCharSearch('');
+    setIsCharPickerOpen(false);
+    setIsGenerating(false);
+    setProgressPercent(0);
+    setProgressStatus('');
+    setHasGenerated(false);
+    setGeneratedVideo({
+      hasGenerated: false,
+      type: 'prompt',
+      prompt: '',
+      aspectRatio: '16:9',
+      style: 'Cinematic',
+      sceneryId: null,
+      characters: [],
+      aiEnhanced: true,
+      videoUrl: null,
+      isSaved: false
+    });
+    clearSelectedCharacters();
+    navigate('/prompt-to-video', { replace: true, state: null });
+    showToast(
+      language === 'ta' ? 'புதிய உரையாடல் தொடங்கப்பட்டது' : 'New session started - inputs cleared',
+      'Sparkles'
+    );
+  }, [clearSelectedCharacters, navigate, showToast, language]);
 
   function getSmartDefaultTitle(chars, style, prompt) {
     if (chars && chars.length > 0) {
@@ -111,6 +215,61 @@ export default function PromptToVideoPage() {
     return final;
   }, [promptText, selectedCharacters]);
 
+  // Dedicated handler for one-click AI Prompt Enhancement with OpenRouter
+  const handleAiEnhancePrompt = useCallback(async () => {
+    if (isEnhancingPrompt || isGenerating) return;
+
+    const rawPrompt = promptText.trim();
+    if (!rawPrompt) {
+      showToast(
+        language === 'ta'
+          ? 'மேம்படுத்த முதலில் ஒரு பிராம்ட்டை உள்ளிடவும்'
+          : 'Please enter a prompt first to enhance it with AI',
+        'Sparkles'
+      );
+      return;
+    }
+
+    setIsEnhancingPrompt(true);
+    showToast(
+      language === 'ta'
+        ? '✨ OpenRouter AI மூலம் பிராம்ட் மேம்படுத்தப்படுகிறது...'
+        : '✨ Enhancing prompt with OpenRouter cinematic AI...',
+      'Sparkles'
+    );
+
+    console.log('[OPENROUTER] Enhancing prompt from button click');
+
+    try {
+      const result = await enhancePromptWithOpenRouter(rawPrompt, {
+        style: promptStyle,
+        resolution: '4k',
+        aspectRatio: promptAspect,
+        characters: selectedCharacters
+      });
+
+      if (result.success && result.enhancedPrompt) {
+        setPromptText(result.enhancedPrompt);
+        showToast(
+          language === 'ta'
+            ? '✨ பிராம்ட் சினிமா தரத்தில் மேம்படுத்தப்பட்டது!'
+            : '✨ Prompt enhanced into cinematic 4K video prompt!',
+          'Sparkles'
+        );
+        console.log('[OPENROUTER] Prompt enhancement completed successfully');
+      } else {
+        const errorMsg = result.error || (language === 'ta' ? 'மேம்படுத்தல் தோல்வியடைந்தது' : 'Prompt enhancement failed');
+        showToast(errorMsg, 'AlertTriangle');
+      }
+    } catch (err) {
+      const errMsg = err?.message || 'Failed to enhance prompt';
+      console.error('[OPENROUTER] Enhancement error:', errMsg);
+      showToast(errMsg, 'AlertTriangle');
+    } finally {
+      setIsEnhancingPrompt(false);
+    }
+  }, [promptText, promptStyle, promptAspect, selectedCharacters, isEnhancingPrompt, isGenerating, showToast, language]);
+
   const handleGenerate = useCallback(async () => {
     // Prevent duplicate clicks
     if (isGeneratingRef.current || isGenerating) return;
@@ -125,11 +284,28 @@ export default function PromptToVideoPage() {
     }
     const finalPrompt = getAugmentedPrompt();
 
-    // 2. Show loading state immediately
+    // 2. Increment request ID to uniquely identify this generation call
+    const requestId = ++currentRequestIdRef.current;
+
+    // 3. Immediately clear previous generated video URL and errors
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenerationError(null);
     setGenerationResults(null);
+    setHasGenerated(false);
+    setGeneratedVideo({
+      hasGenerated: false,
+      type: 'prompt',
+      prompt: finalPrompt,
+      aspectRatio: promptAspect,
+      style: promptStyle,
+      sceneryId: activeSceneryId,
+      characters: selectedCharacters.length > 0 ? selectedCharacters : [],
+      aiEnhanced: isAiEnhance,
+      videoUrl: null,
+      isSaved: false
+    });
+
     setProgressPercent(15);
     setProgressStatus(
       language === 'ta' ? 'உங்கள் பிராம்ட்டை தயார் செய்கிறது...' : 'Preparing your prompt...'
@@ -137,7 +313,6 @@ export default function PromptToVideoPage() {
 
     // Required console logs
     console.log('[VIDEO] Generation started');
-    console.log('[GEMINI] Enhancing prompt');
 
     // Timeout safety handle (4 minutes)
     let isTimedOut = false;
@@ -148,39 +323,45 @@ export default function PromptToVideoPage() {
     try {
       setProgressPercent(30);
       setProgressStatus(
-        language === 'ta' ? 'வீடியோ உருவாக்கப்படுகிறது...' : 'Generating video...'
+        language === 'ta' ? 'AI மூலம் வீடியோ உருவாக்கப்படுகிறது...' : 'Generating video with AI...'
       );
 
       let enhancedPrompt = finalPrompt;
-      try {
-        const geminiRes = await enhancePrompt(finalPrompt, {
-          style: promptStyle,
-          resolution: '4k',
-          aspectRatio: promptAspect,
-          characters: selectedCharacters
-        });
+      if (isAiEnhance) {
+        try {
+          const enhanceRes = await enhancePromptWithOpenRouter(finalPrompt, {
+            style: promptStyle,
+            resolution: '4k',
+            aspectRatio: promptAspect,
+            characters: selectedCharacters
+          });
 
-        if (geminiRes?.enhancedPrompt) {
-          enhancedPrompt = geminiRes.enhancedPrompt;
+          if (enhanceRes?.success && enhanceRes?.enhancedPrompt) {
+            enhancedPrompt = enhanceRes.enhancedPrompt;
+            console.log('[OPENROUTER] Prompt enhancement completed');
+          }
+        } catch (enhanceErr) {
+          console.warn('[PromptToVideo] OpenRouter enhance notice:', enhanceErr.message);
         }
-      } catch (geminiErr) {
-        console.warn('[PromptToVideo] Gemini enhance warning:', geminiErr.message);
       }
 
-      console.log('[GEMINI] Prompt enhancement completed');
+      // Check if this request is still active
+      if (requestId !== currentRequestIdRef.current) {
+        console.log(`[VIDEO] Request #${requestId} superseded by newer request`);
+        return;
+      }
+
       setProgressPercent(50);
       setProgressStatus(
-        language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Processing video...'
+        language === 'ta' ? 'நியூரல் பிரேம்களை உருவாக்குகிறது...' : 'Synthesizing neural video keyframes...'
       );
 
-      console.log('[PIXAZO] Starting video generation');
-      console.log('Calling Pixazo');
-      console.log('[PIXAZO] Request sent');
+      console.log('[VIDEO] Request sent to video generation service');
 
-      // Progress animation while Pixazo generates
+      // Progress animation while Gemini generates
       let currentPct = 50;
       const progressTimer = setInterval(() => {
-        currentPct = Math.min(94, currentPct + 3);
+        currentPct = Math.min(94, currentPct + 4);
         setProgressPercent(currentPct);
         if (currentPct >= 80) {
           setProgressStatus(
@@ -188,10 +369,10 @@ export default function PromptToVideoPage() {
           );
         } else if (currentPct >= 65) {
           setProgressStatus(
-            language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Processing video...'
+            language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Rendering 4K HDR frames...'
           );
         }
-      }, 1200);
+      }, 900);
 
       let apiResponse = null;
       try {
@@ -199,45 +380,48 @@ export default function PromptToVideoPage() {
           enhancedPrompt,
           resolution: '4k',
           aspectRatio: promptAspect,
-          characters: selectedCharacters
+          characters: selectedCharacters,
+          cameraMotion,
+          lightingMood
         });
       } finally {
         clearInterval(progressTimer);
         clearTimeout(timeoutHandle);
       }
 
+      // Discard stale responses if a newer request was dispatched
+      if (requestId !== currentRequestIdRef.current) {
+        console.log(`[VIDEO] Request #${requestId} response discarded (newer request running)`);
+        return;
+      }
+
       if (isTimedOut) {
         throw new Error('Video generation timed out after 4 minutes');
       }
 
-      console.log('[PIXAZO] Generation completed');
+      console.log('[VIDEO] Generation completed');
       console.log('[VIDEO] Video URL received');
       console.log('[VIDEO] Returning result to frontend');
       console.log('Video ready');
       console.log('Displaying video');
+
+      const videoUrl = apiResponse?.videoUrl || apiResponse?.results?.gemini?.videoUrl;
+      if (!videoUrl) {
+        const failureReason = apiResponse?.error || apiResponse?.results?.gemini?.error || 'No video URL was returned by video generation service';
+        throw new Error(failureReason);
+      }
 
       setProgressPercent(100);
       setProgressStatus(
         language === 'ta' ? 'வீடியோ தயாராக உள்ளது!' : 'Video ready'
       );
 
-      const videoUrl = apiResponse?.videoUrl || apiResponse?.results?.pixazo?.videoUrl;
-      if (!videoUrl) {
-        const failureReason = apiResponse?.error || apiResponse?.results?.pixazo?.error || 'No video URL was returned by Pixazo';
-        throw new Error(failureReason);
-      }
-
-      const activeChars = selectedCharacters.length > 0
-        ? selectedCharacters
-        : finalPrompt.toLowerCase().includes('trisha')
-        ? [{ id: 'trisha-krishnan', name: 'Trisha Krishnan', gender: 'Actress', style: 'Cinematic', accentColor: '#38bdf8' }]
-        : [];
-
+      const activeChars = selectedCharacters.length > 0 ? selectedCharacters : [];
       const smartTitle = getSmartDefaultTitle(activeChars, promptStyle, finalPrompt);
       const createdAt = new Date().toISOString();
 
-      const pixazoRecord = {
-        id: `vid_pixazo_${Date.now()}`,
+      const videoRecord = {
+        id: `vid_${apiResponse?.provider || 'gemini'}_${Date.now()}`,
         name: smartTitle,
         hasGenerated: true,
         type: 'prompt',
@@ -252,26 +436,28 @@ export default function PromptToVideoPage() {
         aiEnhanced: isAiEnhance,
         isSaved: true,
         videoUrl: videoUrl,
-        origName: `pixazo_video_${Date.now()}.mp4`,
-        source: 'pixazo',
-        provider: 'pixazo',
+        origName: `gemini_video_${Date.now()}.mp4`,
+        source: apiResponse?.source || apiResponse?.provider || 'gemini',
+        provider: apiResponse?.provider || 'gemini',
+        model: apiResponse?.model || 'gemini-veo-3.1',
         createdAt
       };
 
-      // Display video immediately in the RIGHT SIDE preview area without requiring refresh
-      setGeneratedVideo(pixazoRecord);
-      saveHistoryItem(pixazoRecord);
+      // Display video only when truly generated by current request
+      setGeneratedVideo(videoRecord);
+      setHasGenerated(true);
+      saveHistoryItem(videoRecord);
       setGenerationResults(null);
       setIsGenerating(false);
       setGenerationError(null);
 
       consumeTokens('gemini', 150);
-      consumeTokens('pixazo', 100);
 
+      const providerDisplayName = (apiResponse?.provider === 'gemini' ? 'Gemini' : 'AI');
       showToast(
         language === 'ta'
-          ? 'Pixazo வீடியோ உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!'
-          : 'Pixazo Video generated & saved to History!',
+          ? `✨ ${providerDisplayName} வீடியோ உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!`
+          : `✨ ${providerDisplayName} Video generated & saved to History!`,
         'BookmarkCheck'
       );
 
@@ -280,14 +466,38 @@ export default function PromptToVideoPage() {
       }
     } catch (err) {
       clearTimeout(timeoutHandle);
+      if (requestId !== currentRequestIdRef.current) {
+        return;
+      }
+      isGeneratingRef.current = false;
       setIsGenerating(false);
       setProgressPercent(0);
-      const errMsg = err?.message || 'Video generation failed. Please try again.';
-      console.error(`[FAL.AI] Generation failed: ${errMsg}`);
+      setProgressStatus('');
+      setHasGenerated(false);
+      setGenerationResults(null);
+      setGeneratedVideo({
+        hasGenerated: false,
+        type: 'prompt',
+        prompt: finalPrompt,
+        aspectRatio: promptAspect,
+        style: promptStyle,
+        sceneryId: activeSceneryId,
+        characters: selectedCharacters.length > 0 ? selectedCharacters : [],
+        aiEnhanced: isAiEnhance,
+        videoUrl: null,
+        isSaved: false
+      });
+      const isQuota = err?.status === 429 || err?.isQuota || (err?.message && (err.message.includes('quota') || err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED')));
+      const errMsg = isQuota
+        ? 'Video generation quota is currently unavailable. Please check your Gemini API project quota/billing.'
+        : (err?.message || 'Video generation failed. Please try again.');
+      console.error(`[VIDEO] Generation failed: ${errMsg}`);
       setGenerationError(errMsg);
-      showToast(`Generation notice: ${errMsg}`, 'AlertTriangle');
+      showToast(errMsg, 'AlertTriangle');
     } finally {
-      isGeneratingRef.current = false;
+      if (requestId === currentRequestIdRef.current) {
+        isGeneratingRef.current = false;
+      }
     }
   }, [promptText, getAugmentedPrompt, promptStyle, promptAspect, cameraMotion, lightingMood, activeSceneryId, selectedCharacters, isAiEnhance, showToast, language, isGenerating]);
 
@@ -388,8 +598,269 @@ export default function PromptToVideoPage() {
   };
 
 
+  const handleInsertCharacterIntoPrompt = (character) => {
+    setPromptText((prev) => {
+      const tag = `@${character.name}`;
+      if (!prev.trim()) {
+        return `${tag} `;
+      }
+      if (!prev.includes(tag)) {
+        return `${prev.trim()} ${tag} `;
+      }
+      return prev;
+    });
+    showToast(`Added @${character.name} to prompt`, 'Sparkles');
+  };
+
+  // Helper to render prompt composer consistently across State 1 and State 2
+  const renderPromptComposer = () => (
+    <div className="form-group prompt-composer-section p2v-composer-section">
+      <div className="form-label-row">
+        <label htmlFor="prompt-input" className="form-step-label">
+          <span className="form-step-badge">02</span>
+          <span>{t('step1PromptLabel', 'Video Description & Prompt')}</span>
+        </label>
+        <div className="label-controls-right">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !isAiEnhance;
+              setIsAiEnhance(next);
+              showToast(
+                next
+                  ? language === 'ta'
+                    ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
+                    : '✨ AI Enhance ON: Auto-optimizing lighting & 4K HDR clarity!'
+                  : language === 'ta'
+                  ? 'AI மேம்பாடு அணைக்கப்பட்டது'
+                  : 'AI Enhance turned OFF',
+                'Sparkles'
+              );
+            }}
+            className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
+            title="Toggle AI Enhance"
+            aria-pressed={isAiEnhance}
+          >
+            <div className="enhance-btn-content">
+              <Icons.Sparkles />
+              <span>{t('aiEnhance', 'AI Enhance')}</span>
+            </div>
+            <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
+              <div className="enhance-switch-thumb"></div>
+            </div>
+          </button>
+
+          <span className="char-counter">{promptText.length}/500</span>
+        </div>
+      </div>
+
+      {/* Large Rounded Prompt Composer Box with soft shadow, border and light blue/purple glow */}
+      <div className="prompt-composer-box p2v-prompt-box">
+        <textarea
+          id="prompt-input"
+          rows={4}
+          value={promptText}
+          onChange={(e) => setPromptText(e.target.value)}
+          placeholder={
+            language === 'ta'
+              ? 'நீங்கள் உருவாக்க விரும்பும் வீடியோவை விரிவாக விவரிக்கவும்...'
+              : 'Describe the video you want to generate in detail...'
+          }
+          className="prompt-composer-textarea p2v-composer-textarea"
+        />
+
+        {/* Inside-box Footer - + Button & Characters Chips on left, Generate on right */}
+        <div className="prompt-composer-footer">
+          <div className="composer-footer-left">
+            <div className="composer-plus-wrapper" ref={charPickerRef}>
+              <button
+                type="button"
+                className={`composer-plus-btn ${isCharPickerOpen ? 'active' : ''}`}
+                onClick={() => setIsCharPickerOpen((prev) => !prev)}
+                title="Add Characters"
+                aria-label="Add Characters"
+                aria-expanded={isCharPickerOpen}
+              >
+                <Icons.Plus size={16} />
+              </button>
+
+              {/* Dropdown Menu - ONLY Characters */}
+              {isCharPickerOpen && (
+                <div className="char-dropdown-popover composer-char-popover">
+                  {/* TOP ACTION ROW: + New Character */}
+                  <div className="char-popover-top-action">
+                    <button
+                      type="button"
+                      className="popover-new-char-btn"
+                      onClick={() => {
+                        setIsCharPickerOpen(false);
+                        navigate('/characters');
+                      }}
+                    >
+                      <div className="new-char-icon-circle">
+                        <Icons.Plus size={14} />
+                      </div>
+                      <span className="new-char-label-text">+ New Character</span>
+                    </button>
+                  </div>
+
+                  <div className="popover-divider-line" />
+
+                  {/* Quick Search Box */}
+                  <div className="char-popover-search">
+                    <span className="search-icon">
+                      <Icons.Search size={14} />
+                    </span>
+                    <input
+                      type="text"
+                      placeholder={t('searchCharactersPlaceholder', 'Search characters...')}
+                      value={charSearch}
+                      onChange={(e) => setCharSearch(e.target.value)}
+                      className="char-popover-input"
+                      autoFocus
+                    />
+                    {charSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCharSearch('')}
+                        className="search-clear-btn"
+                      >
+                        <Icons.X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Scrollable List of Characters Only */}
+                  <div className="char-popover-list-body">
+                    {filteredCharacters.map((char) => {
+                      const isSelected = selectedCharacterIds.includes(char.id);
+                      return (
+                        <div
+                          key={char.id}
+                          className={`char-option-item flow-char-row ${isSelected ? 'selected' : ''}`}
+                          onClick={() => handleToggleCharacter(char)}
+                        >
+                          <div className="char-option-left">
+                            <div className="char-mini-avatar-wrap">
+                              <img
+                                src={char.avatar}
+                                alt={char.name}
+                                className="char-mini-avatar"
+                              />
+                            </div>
+                            <div className="char-option-details">
+                              <div className="char-option-name-row">
+                                <span className="char-option-name">{char.name}</span>
+                                {char.isCustom && (
+                                  <span className="custom-char-mini-tag">Custom</span>
+                                )}
+                              </div>
+                              <span className="char-option-role">{char.role || char.gender || 'Character'}</span>
+                            </div>
+                          </div>
+
+                          <div className={`char-checkbox-circle ${isSelected ? 'checked' : ''}`}>
+                            {isSelected && <Icons.Check size={12} />}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {filteredCharacters.length === 0 && (
+                      <div className="char-popover-empty">
+                        <p>{t('noCharactersFound', 'No characters found')}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Popover Footer */}
+                  <div className="char-popover-footer">
+                    <span className="selected-summary-text">
+                      {selectedCharacters.length} {t('selected', 'selected')}
+                    </span>
+                    <button
+                      type="button"
+                      className="popover-done-btn"
+                      onClick={() => setIsCharPickerOpen(false)}
+                    >
+                      {t('done', 'Done')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Character Chips inside Prompt Box near + Button */}
+            {selectedCharacters.length > 0 && (
+              <div className="composer-char-chips-row">
+                {selectedCharacters.map((character) => (
+                  <div key={character.id} className="composer-char-chip">
+                    <img
+                      src={character.avatar}
+                      alt={character.name}
+                      className="composer-chip-avatar"
+                    />
+                    <span className="composer-chip-name">@{character.name}</span>
+                    <button
+                      type="button"
+                      className="composer-chip-remove"
+                      onClick={() => handleRemoveCharacter(character.id, character.name)}
+                      title={`Remove @${character.name}`}
+                    >
+                      <Icons.X size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="composer-footer-right">
+            <button
+              type="button"
+              disabled={isGenerating}
+              onClick={handleGenerate}
+              className={`composer-generate-btn ${hasGenerated ? 'is-regenerate' : ''}`}
+              title={
+                hasGenerated
+                  ? language === 'ta'
+                    ? 'வீடியோவை மீண்டும் உருவாக்கு (Ctrl + Enter)'
+                    : 'Regenerate Video (Ctrl + Enter)'
+                  : language === 'ta'
+                  ? 'வீடியோ உருவாக்கு (Ctrl + Enter)'
+                  : 'Generate Video (Ctrl + Enter)'
+              }
+            >
+              {hasGenerated && !isGenerating ? (
+                <Icons.RotateCw size={14} className="regen-icon" />
+              ) : (
+                <Icons.Sparkles size={15} />
+              )}
+              <span>
+                {isGenerating
+                  ? language === 'ta'
+                    ? 'உருவாக்குகிறது...'
+                    : 'Generating...'
+                  : hasGenerated
+                  ? language === 'ta'
+                    ? 'மீண்டும் உருவாக்கு'
+                    : 'Regenerate'
+                  : language === 'ta'
+                  ? 'உருவாக்கு'
+                  : 'Generate'}
+              </span>
+              {!isGenerating && !hasGenerated && <Icons.ArrowRight size={14} />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const isStudioState = isGenerating || (hasGenerated && !!generatedVideo?.videoUrl) || (!!generationResults && (generationResults.gemini?.videoUrl || generationResults.fal?.videoUrl));
+
   return (
-    <div className="view-container">
+    <div className={`view-container p2v-page-container ${!isStudioState ? 'p2v-initial-state' : 'p2v-studio-state'}`}>
       {/* Studio Header Row */}
       <div className="page-heading">
         <div className="page-heading-inner">
@@ -414,6 +885,15 @@ export default function PromptToVideoPage() {
           <div className="heading-actions-right">
             <button
               type="button"
+              onClick={handleNewChat}
+              className="tool-btn new-chat-btn"
+              title={language === 'ta' ? 'புதிய உரையாடல் (உள்ளீடுகளை மீட்டமைக்க)' : 'New Chat (Clear current session inputs)'}
+            >
+              <Icons.Plus size={15} />
+              <span>{t('newChat', 'New Chat')}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/characters')}
               className="tool-btn"
               title="Browse Characters Library"
@@ -434,54 +914,124 @@ export default function PromptToVideoPage() {
         </div>
       </div>
 
-      {/* Main Two-Column Studio Layout */}
-      <div className="studio-split-layout">
-        {/* LEFT COLUMN: CREATION CONFIGURATOR */}
-        <div className="studio-card-panel">
-          <div className="creation-card active-card">
-            <div className="card-top-accent accent-blue-purple"></div>
+      {/* STATE 1 — Initial Prompt Page (Spacious White Screen + Bottom-Centered Composer) */}
+      {!isStudioState ? (
+        <div className="p2v-initial-workspace">
+          <div className="p2v-initial-spacer" />
+          <div className="p2v-initial-composer-wrap">
+            {generationError && (
+              <div
+                className="generation-error-notice"
+                style={{
+                  marginBottom: '16px',
+                  padding: '14px 18px',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '14px',
+                  color: '#b91c1c'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                  <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={20} />
+                  <div style={{ fontSize: '13.5px', lineHeight: 1.45 }}>
+                    <strong style={{ color: '#b91c1c', display: 'block', marginBottom: '3px', fontWeight: 700 }}>
+                      {language === 'ta' ? 'அறிவிப்பு' : 'Generation Notice'}
+                    </strong>
+                    <span style={{ wordBreak: 'break-word', color: '#1e293b', fontWeight: 500 }}>{generationError}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="tool-btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      borderColor: '#dc2626',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      padding: '6px 14px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)'
+                    }}
+                  >
+                    <Icons.RotateCw size={13} /> {language === 'ta' ? 'மீண்டும் முயற்சி' : 'Retry'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenerationError(null)}
+                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center' }}
+                    title="Dismiss"
+                  >
+                    <Icons.X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div className="creation-card-inner">
+            {renderPromptComposer()}
+          </div>
+        </div>
+      ) : (
+        /* STATE 2 — Generated Output Page (Two-Column Studio Layout with Left Input & Right Video Studio) */
+        <div className="studio-split-layout p2v-studio-active-layout">
+          {/* LEFT COLUMN: Prompt to Video input/workspace */}
+          <div className="studio-card-panel p2v-left-panel">
+            <div className="p2v-left-card">
               {generationError && (
                 <div
                   className="generation-error-notice"
                   style={{
                     marginBottom: '16px',
-                    padding: '12px 16px',
-                    background: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    padding: '14px 18px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '12px',
-                    color: '#fca5a5'
+                    gap: '14px',
+                    color: '#b91c1c'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
-                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={18} />
-                    <div style={{ fontSize: '13px', lineHeight: 1.4 }}>
-                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
-                        {language === 'ta' ? 'வீடியோ உருவாக்க பிழை' : 'Generation Notice'}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={20} />
+                    <div style={{ fontSize: '13.5px', lineHeight: 1.45 }}>
+                      <strong style={{ color: '#b91c1c', display: 'block', marginBottom: '3px', fontWeight: 700 }}>
+                        {language === 'ta' ? 'அறிவிப்பு' : 'Generation Notice'}
                       </strong>
-                      <span style={{ wordBreak: 'break-word' }}>{generationError}</span>
+                      <span style={{ wordBreak: 'break-word', color: '#1e293b', fontWeight: 500 }}>{generationError}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     <button
                       type="button"
                       onClick={handleGenerate}
                       disabled={isGenerating}
                       className="tool-btn"
                       style={{
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        borderColor: 'rgba(239, 68, 68, 0.4)',
-                        color: '#fecaca',
-                        fontSize: '12px',
-                        padding: '5px 12px',
+                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                        borderColor: '#dc2626',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '12.5px',
+                        padding: '6px 14px',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '6px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)'
                       }}
                     >
                       <Icons.RotateCw size={13} /> {language === 'ta' ? 'மீண்டும் முயற்சி' : 'Retry'}
@@ -489,340 +1039,54 @@ export default function PromptToVideoPage() {
                     <button
                       type="button"
                       onClick={() => setGenerationError(null)}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                      style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center' }}
                       title="Dismiss"
                     >
-                      <Icons.X size={15} />
+                      <Icons.X size={16} />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 1. Video Description & Prompt Area */}
-              <div className="form-group">
-                <div className="form-label-row">
-                  <label htmlFor="prompt-input" className="form-step-label">
-                    <span className="form-step-badge">01</span>
-                    <span>{t('step1PromptLabel')}</span>
-                  </label>
-                  <div className="label-controls-right">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !isAiEnhance;
-                        setIsAiEnhance(next);
-                        showToast(
-                          next
-                            ? language === 'ta'
-                              ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
-                              : '✨ AI Enhance ON: Auto-optimizing lighting & 4K HDR clarity!'
-                            : language === 'ta'
-                            ? 'AI மேம்பாடு அணைக்கப்பட்டது'
-                            : 'AI Enhance turned OFF',
-                          'Sparkles'
-                        );
-                      }}
-                      className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
-                      title="Toggle AI Enhance"
-                      aria-pressed={isAiEnhance}
-                    >
-                      <div className="enhance-btn-content">
-                        <Icons.Sparkles />
-                        <span>{t('aiEnhance')}</span>
-                      </div>
-                      <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
-                        <div className="enhance-switch-thumb"></div>
-                      </div>
-                    </button>
+              {/* Spacer pushing prompt composer toward bottom-middle of LEFT panel */}
+              <div className="p2v-left-spacer" />
 
-                    <span className="char-counter">{promptText.length}/500</span>
-                  </div>
-                </div>
-
-                <div className="textarea-wrapper">
-                  <textarea
-                    id="prompt-input"
-                    rows={3.5}
-                    value={promptText}
-                    onChange={(e) => setPromptText(e.target.value)}
-                    placeholder={t('promptPlaceholder')}
-                    className="thamili-textarea"
-                  />
-                </div>
-              </div>
-
-              {/* 2. Characters Dropdown & Multi-Select Tags */}
-              <div className="form-group">
-                <CharacterSelectDropdown
-                  badge="02"
-                  label={t('stepCharactersLabel')}
-                  onOpenLibrary={() => navigate('/characters')}
-                />
-              </div>
-            </div>
-
-            {/* Main Generate Button Action Area */}
-            <div className="generate-action-bar">
-              <button
-                type="button"
-                disabled={isGenerating}
-                onClick={handleGenerate}
-                className="generate-btn"
-                title="Generate AI Video (Ctrl + Enter)"
-              >
-                <div className="gen-btn-left">
-                  <Icons.Sparkles />
-                  <span>
-                    {isGenerating
-                      ? (language === 'ta' ? 'உருவாக்கப்படுகிறது...' : 'Generating...')
-                      : generatedVideo?.hasGenerated
-                      ? (language === 'ta' ? 'புதிய வீடியோவை உருவாக்கவும்' : 'Generate New Video')
-                      : t('generate4kVideo')}
-                  </span>
-                </div>
-                <div className="gen-btn-right">
-                  <span className="shortcut-tag">Ctrl + ↵</span>
-                  <Icons.ArrowRight />
-                </div>
-              </button>
+              {/* Render Prompt Composer */}
+              {renderPromptComposer()}
             </div>
           </div>
+
+          {/* RIGHT COLUMN: Video Studio / Generated Output Panel with Slide-in animation */}
+          <div className="studio-output-panel slide-in-from-right" ref={previewSectionRef}>
+            {isGenerating ? (
+              <div className="studio-generating-card">
+                <TamilParticleOrb
+                  progressPercent={progressPercent}
+                  progressStatus={progressStatus}
+                  promptSummary={promptText}
+                  onCancel={() => {
+                    currentRequestIdRef.current++;
+                    isGeneratingRef.current = false;
+                    setIsGenerating(false);
+                    showToast(
+                      language === 'ta' ? 'உருவாக்கம் ரத்து செய்யப்பட்டது' : 'Generation cancelled',
+                      'Trash2'
+                    );
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="output-revealed-wrap" key={generatedVideo.videoUrl || generatedVideo.id}>
+                <VideoPlayer
+                  video={generatedVideo}
+                  onRegenerate={handleGenerate}
+                  onSaveToggle={handleSaveToggle}
+                />
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* RIGHT COLUMN: OUTPUT PREVIEW & TWO PROVIDER RESULT CARDS */}
-        <div className="studio-output-panel" ref={previewSectionRef}>
-          {generationResults ? (
-            <div className="dual-provider-results-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Top Header Bar for Dual Results */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 18px',
-                background: 'rgba(15, 23, 42, 0.75)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '12px',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Icons.Sparkles style={{ color: '#38bdf8' }} size={18} />
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>
-                    Dual Provider Video Results
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setGenerationResults(null)}
-                  className="tool-btn"
-                  style={{ fontSize: '12px', padding: '5px 12px', color: '#94a3b8' }}
-                  title="Return to standard preview"
-                >
-                  Switch to Studio View
-                </button>
-              </div>
-
-              {/* CARD 1: GEMINI / VEO 3.1 (4K) */}
-              <div
-                className="provider-result-card gemini-card"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(10, 15, 30, 0.98) 100%)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  borderRadius: '16px',
-                  padding: '20px',
-                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
-                  backdropFilter: 'blur(12px)'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #0284c7, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                      <Icons.Sparkles size={20} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        Gemini / Veo 3.1
-                        <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)' }}>
-                          4K Ultra HD • 8s
-                        </span>
-                      </h3>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Model: veo-3.1-generate-preview</span>
-                    </div>
-                  </div>
-
-                  {/* Status Indicator */}
-                  {generationResults.gemini?.success ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#34d399', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '5px 12px', borderRadius: '20px' }}>
-                      <Icons.Check size={14} /> Video Generated
-                    </span>
-                  ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#f87171', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '5px 12px', borderRadius: '20px' }}>
-                      <Icons.AlertTriangle size={14} /> Generation Notice
-                    </span>
-                  )}
-                </div>
-
-                {generationResults.gemini?.success && generationResults.gemini?.videoUrl ? (
-                  <div>
-                    <div style={{ borderRadius: '12px', overflow: 'hidden', background: '#020617', marginBottom: '14px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                      <video
-                        src={generationResults.gemini.videoUrl}
-                        controls
-                        autoPlay
-                        loop
-                        playsInline
-                        style={{ width: '100%', maxHeight: '420px', display: 'block', objectFit: 'contain' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                      <a
-                        href={generationResults.gemini.videoUrl}
-                        download={`gemini_veo_4k_${Date.now()}.mp4`}
-                        className="tool-btn"
-                        style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', padding: '8px 18px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                      >
-                        <Icons.Download size={16} /> Download 4K Video
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveProviderVideo('gemini')}
-                        className="tool-btn"
-                        style={{ padding: '8px 14px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Icons.Bookmark size={15} /> Save to History
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    color: '#fecaca'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', color: '#f87171', fontWeight: 600, fontSize: '14px' }}>
-                      <Icons.AlertTriangle size={16} />
-                      <span>Gemini Generation Notice</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', color: '#fca5a5' }}>
-                      {generationResults.gemini?.error || 'Gemini video generation request failed.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* CARD 2: FAL.AI */}
-              <div
-                className="provider-result-card hf-card"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(10, 15, 30, 0.98) 100%)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  borderRadius: '16px',
-                  padding: '20px',
-                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
-                  backdropFilter: 'blur(12px)'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #a855f7, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                      <Icons.Zap size={20} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        Fal.ai
-                        <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.35)' }}>
-                          LTX-Video 4K
-                        </span>
-                      </h3>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Fal.ai Text-to-Video Engine</span>
-                    </div>
-                  </div>
-
-                  {/* Status Indicator */}
-                  {(generationResults.fal?.success || generationResults.fal?.videoUrl) ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#34d399', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '5px 12px', borderRadius: '20px' }}>
-                      <Icons.Check size={14} /> Video Generated
-                    </span>
-                  ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#f87171', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '5px 12px', borderRadius: '20px' }}>
-                      <Icons.AlertTriangle size={14} /> Generation Notice
-                    </span>
-                  )}
-                </div>
-
-                {(generationResults.fal?.success || generationResults.fal?.videoUrl) && (generationResults.fal?.videoUrl || generationResults.videoUrl) ? (
-                  <div>
-                    <div style={{ borderRadius: '12px', overflow: 'hidden', background: '#020617', marginBottom: '14px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                      <video
-                        src={generationResults.fal?.videoUrl || generationResults.videoUrl}
-                        controls
-                        autoPlay
-                        loop
-                        playsInline
-                        style={{ width: '100%', maxHeight: '420px', display: 'block', objectFit: 'contain' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                      <a
-                        href={generationResults.fal?.videoUrl || generationResults.videoUrl}
-                        download={`fal_video_${Date.now()}.mp4`}
-                        className="tool-btn"
-                        style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #a855f7, #7c3aed)', color: '#fff', padding: '8px 18px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                      >
-                        <Icons.Download size={16} /> Download Video
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveProviderVideo('fal')}
-                        className="tool-btn"
-                        style={{ padding: '8px 14px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Icons.Bookmark size={15} /> Save to History
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    color: '#fecaca'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', color: '#f87171', fontWeight: 600, fontSize: '14px' }}>
-                      <Icons.AlertTriangle size={16} />
-                      <span>Fal.ai Generation Notice</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', color: '#fca5a5' }}>
-                      {generationResults.fal?.error || generationResults.error || 'Fal.ai text-to-video generation failed.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <VideoPlayer
-              video={generatedVideo}
-              onRegenerate={handleGenerate}
-              onSaveToggle={handleSaveToggle}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Generating Progress Modal Overlay */}
-      <GeneratingModal
-        isOpen={isGenerating}
-        progressPercent={progressPercent}
-        progressStatus={progressStatus}
-        videoType="prompt"
-        promptSummary={getAugmentedPrompt()}
-        onCancel={() => {
-          setIsGenerating(false);
-          showToast(language === 'ta' ? 'உருவாக்கம் ரத்து செய்யப்பட்டது' : 'Generation cancelled', 'Trash2');
-        }}
-      />
+      )}
 
       {/* Save to History Modal Dialog */}
       <SaveVideoModal
@@ -834,3 +1098,4 @@ export default function PromptToVideoPage() {
     </div>
   );
 }
+

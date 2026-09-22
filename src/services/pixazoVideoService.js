@@ -1,5 +1,6 @@
-﻿export {
+export {
   enhancePrompt,
+  enhancePromptWithOpenRouter,
   generateTextToVideo,
   generateImageToVideo,
   generatePixazoTextToVideo,

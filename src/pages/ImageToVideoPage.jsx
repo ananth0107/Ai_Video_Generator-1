@@ -9,24 +9,21 @@ import { saveHistoryItem, deleteHistoryItem, captureCanvasThumbnail, optimizeIma
 import { useToast } from '../context/ToastContext';
 import { useCharacters } from '../context/CharacterContext';
 import { useLanguage } from '../context/LanguageContext';
-import { generateImageToVideo } from '../services/falAiService';
+import { generateImageToVideo } from '../services/videoService';
 import { consumeTokens } from '../utils/tokenUsageStorage';
-
-const defaultSourceImage =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%230f172a"/><stop offset="50%" stop-color="%234f46e5"/><stop offset="100%" stop-color="%23ec4899"/></linearGradient></defs><rect width="600" height="400" fill="url(%23g1)"/><circle cx="300" cy="200" r="90" fill="none" stroke="%2338bdf8" stroke-width="8"/><circle cx="300" cy="200" r="60" fill="none" stroke="%23ec4899" stroke-width="6"/><text x="300" y="208" fill="white" font-family="sans-serif" font-weight="bold" font-size="22" text-anchor="middle">THAMILI AI</text></svg>';
 
 export default function ImageToVideoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
-  const { selectedCharacters } = useCharacters();
+  const { selectedCharacters, clearSelectedCharacters } = useCharacters();
   const { t, language } = useLanguage();
 
   const [uploadedImage, setUploadedImage] = useState(
-    location.state?.presetImage || defaultSourceImage
+    location.state?.presetImage || null
   );
   const [imageFilename, setImageFilename] = useState(
-    location.state?.presetImage ? 'character_portrait.png' : 'Thamili_Portal.svg'
+    location.state?.presetImage ? 'character_portrait.png' : ''
   );
   const [motionPrompt, setMotionPrompt] = useState(
     location.state?.presetPrompt || ''
@@ -78,15 +75,16 @@ export default function ImageToVideoPage() {
 
   // Video Output State
   const [generatedVideo, setGeneratedVideo] = useState({
-    hasGenerated: true,
+    hasGenerated: false,
     type: 'image',
     prompt: location.state?.presetPrompt || '',
-    aspectRatio: '16:9',
+    aspectRatio: location.state?.presetAspect || '16:9',
     style: 'Motion: Smooth',
-    uploadedImage: location.state?.presetImage || defaultSourceImage,
+    uploadedImage: location.state?.presetImage || null,
     sceneryId: location.state?.sceneryId || 'cosmic-nebula',
     characters: [],
     aiEnhanced: true,
+    videoUrl: null,
     isSaved: false
   });
 
@@ -99,11 +97,42 @@ export default function ImageToVideoPage() {
   const fileInputRef = useRef(null);
   const previewSectionRef = useRef(null);
 
+  const handleNewChat = useCallback(() => {
+    setUploadedImage(null);
+    setImageFilename('');
+    setMotionPrompt('');
+    setImageMotion('Smooth');
+    setCameraDirection('Zoom In');
+    setLightingAtmosphere('Golden Hour');
+    setImageAspect('16:9');
+    setIsAiEnhance(true);
+    setActiveSceneryId('cosmic-nebula');
+    setGenerationError(null);
+    clearSelectedCharacters();
+    setGeneratedVideo({
+      hasGenerated: false,
+      type: 'image',
+      prompt: '',
+      aspectRatio: '16:9',
+      style: 'Motion: Smooth',
+      uploadedImage: null,
+      sceneryId: 'cosmic-nebula',
+      characters: [],
+      aiEnhanced: true,
+      videoUrl: null,
+      isSaved: false
+    });
+    showToast(
+      language === 'ta' ? 'புதிய உரையாடல் தொடங்கப்பட்டது' : 'New session started - inputs cleared',
+      'Sparkles'
+    );
+  }, [clearSelectedCharacters, showToast, language]);
+
   function getSmartDefaultTitle(chars, motion, prompt, filename) {
     if (chars && chars.length > 0) {
       return `${chars[0].name} - ${motion}`;
     }
-    if (filename && filename !== 'source_image.png' && filename !== 'character_portrait.png' && filename !== 'Thamili_Portal.svg') {
+    if (filename && filename !== 'source_image.png' && filename !== 'character_portrait.png' && filename !== 'thamili-logo.png') {
       const cleanName = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
       return `${cleanName} (${motion})`;
     }
@@ -114,7 +143,7 @@ export default function ImageToVideoPage() {
         return `${words} (${motion})`;
       }
     }
-    return `Image Motion - ${motion}`;
+    return `THAMILI Motion - ${motion}`;
   }
 
   const handleFileUpload = (file) => {
@@ -166,6 +195,25 @@ export default function ImageToVideoPage() {
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenerationError(null);
+    setGeneratedVideo({
+      hasGenerated: false,
+      type: 'image',
+      prompt: finalPrompt,
+      aspectRatio: imageAspect,
+      style: `Motion: ${imageMotion}`,
+      motion: imageMotion,
+      cameraDirection,
+      cameraMotion: cameraDirection,
+      lightingAtmosphere,
+      lightingMood: lightingAtmosphere,
+      uploadedImage: uploadedImage,
+      sceneryId: activeSceneryId,
+      characters: selectedCharacters,
+      aiEnhanced: isAiEnhance,
+      videoUrl: null,
+      isSaved: false
+    });
+
     setProgressPercent(15);
     setProgressStatus(
       language === 'ta'
@@ -199,9 +247,9 @@ export default function ImageToVideoPage() {
       }
     }, 1100);
 
-    let pixazoVideoResult = null;
+    let videoResult = null;
     try {
-      pixazoVideoResult = await generateImageToVideo(uploadedImage, finalPrompt, {
+      videoResult = await generateImageToVideo(uploadedImage, finalPrompt, {
         aspectRatio: imageAspect,
         duration: 2,
         onProgress: (pct, msg) => {
@@ -211,30 +259,50 @@ export default function ImageToVideoPage() {
       });
     } catch (err) {
       clearInterval(progressTimer);
+      isGeneratingRef.current = false;
       setIsGenerating(false);
-      console.error('[ImageToVideoPage Pixazo Error]', err);
-      const errMsg = err?.body?.detail || err?.message || 'Image-to-video generation failed. Please try again.';
+      setProgressPercent(0);
+      setProgressStatus('');
+
+      setGeneratedVideo({
+        hasGenerated: false,
+        type: 'image',
+        prompt: finalPrompt,
+        aspectRatio: imageAspect,
+        style: `Motion: ${imageMotion}`,
+        motion: imageMotion,
+        cameraDirection,
+        cameraMotion: cameraDirection,
+        lightingAtmosphere,
+        lightingMood: lightingAtmosphere,
+        uploadedImage: uploadedImage,
+        sceneryId: activeSceneryId,
+        characters: selectedCharacters,
+        aiEnhanced: isAiEnhance,
+        videoUrl: null,
+        isSaved: false
+      });
+
+      console.error('[ImageToVideoPage Error]', err);
+      const isQuota = err?.status === 429 || err?.isQuota || (err?.message && (err.message.includes('quota') || err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED')));
+      const errMsg = isQuota
+        ? 'Video generation quota is currently unavailable. Please check your Gemini API project quota/billing.'
+        : (err?.body?.detail || err?.message || 'Image-to-video generation failed. Please try again.');
+
       setGenerationError(errMsg);
-      showToast(
-        language === 'ta'
-          ? `பிழை: ${errMsg}`
-          : `Generation notice: ${errMsg}`,
-        'AlertTriangle'
-      );
+      showToast(errMsg, 'AlertTriangle');
       return;
     } finally {
       clearInterval(progressTimer);
       isGeneratingRef.current = false;
     }
 
-    if (!pixazoVideoResult || !pixazoVideoResult.videoUrl) {
+    if (!videoResult || !videoResult.videoUrl) {
       setIsGenerating(false);
-      const errMsg = 'No video URL received from Pixazo';
+      isGeneratingRef.current = false;
+      const errMsg = 'No video URL received from video service';
       setGenerationError(errMsg);
-      showToast(
-        language === 'ta' ? 'வீடியோ URL கிடைக்கவில்லை' : errMsg,
-        'AlertTriangle'
-      );
+      showToast(errMsg, 'AlertTriangle');
       return;
     }
 
@@ -251,7 +319,7 @@ export default function ImageToVideoPage() {
       const optimizedImg = await optimizeImageDataUrl(uploadedImage);
 
       const smartTitle = getSmartDefaultTitle(selectedCharacters, imageMotion, finalPrompt, imageFilename);
-      const videoId = `vid_pixazo_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const videoId = `vid_gemini_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
       const newVideoRecord = {
         id: videoId,
@@ -272,22 +340,22 @@ export default function ImageToVideoPage() {
         characters: selectedCharacters,
         aiEnhanced: isAiEnhance,
         isSaved: true,
-        videoUrl: pixazoVideoResult.videoUrl,
-        origName: pixazoVideoResult.origName,
-        source: 'pixazo',
-        provider: 'pixazo',
+        videoUrl: videoResult.videoUrl,
+        origName: videoResult.origName,
+        source: videoResult.source || 'gemini',
+        provider: videoResult.provider || 'gemini',
         createdAt: new Date().toISOString()
       };
 
       // Save to history immediately upon generation!
       saveHistoryItem(newVideoRecord);
-      consumeTokens('pixazo', 100);
+      consumeTokens('gemini', 100);
 
       setGeneratedVideo(newVideoRecord);
       showToast(
         language === 'ta'
-          ? 'Pixazo AI வீடியோ வெற்றிகரமாக உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!'
-          : 'Pixazo AI Video generated & saved to History!',
+          ? 'AI வீடியோ வெற்றிகரமாக உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!'
+          : 'AI Video generated & saved to History!',
         'BookmarkCheck'
       );
 
@@ -377,6 +445,26 @@ export default function ImageToVideoPage() {
     }
   };
 
+  const handleSelectCharacter = (character) => {
+    setMotionPrompt((prev) => {
+      const tag = `@${character.name}`;
+      if (!prev.trim()) {
+        return `${tag} `;
+      }
+      if (!prev.includes(tag)) {
+        return `${prev.trim()} ${tag} `;
+      }
+      return prev;
+    });
+    if (!uploadedImage && character.avatar) {
+      setUploadedImage(character.avatar);
+      setImageFilename(`${character.name.toLowerCase().replace(/\s+/g, '_')}_portrait.png`);
+      showToast(`Set ${character.name}'s portrait as source & added @${character.name}`, 'Sparkles');
+    } else {
+      showToast(`Added @${character.name} to prompt`, 'Sparkles');
+    }
+  };
+
   return (
     <div className="view-container">
       {/* Studio Header Row */}
@@ -401,6 +489,15 @@ export default function ImageToVideoPage() {
           </div>
 
           <div className="heading-actions-right">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="tool-btn new-chat-btn"
+              title={language === 'ta' ? 'புதிய உரையாடல் (உள்ளீடுகளை மீட்டமைக்க)' : 'New Chat (Clear current session inputs)'}
+            >
+              <Icons.Plus size={15} />
+              <span>{t('newChat', 'New Chat')}</span>
+            </button>
             <button
               type="button"
               onClick={() => navigate('/characters')}
@@ -436,41 +533,45 @@ export default function ImageToVideoPage() {
                   className="generation-error-notice"
                   style={{
                     marginBottom: '16px',
-                    padding: '12px 16px',
+                    padding: '14px 18px',
                     background: 'rgba(239, 68, 68, 0.12)',
                     border: '1px solid rgba(239, 68, 68, 0.35)',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '12px',
-                    color: '#fca5a5'
+                    gap: '14px',
+                    color: '#fecaca'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
-                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={18} />
-                    <div style={{ fontSize: '13px', lineHeight: 1.4 }}>
-                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
-                        {language === 'ta' ? 'வீடியோ உருவாக்க பிழை' : 'Generation Notice'}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                    <Icons.AlertTriangle style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} size={20} />
+                    <div style={{ fontSize: '13.5px', lineHeight: 1.45 }}>
+                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '3px', fontWeight: 700 }}>
+                        {language === 'ta' ? 'அறிவிப்பு' : 'Generation Notice'}
                       </strong>
-                      <span style={{ wordBreak: 'break-word' }}>{generationError}</span>
+                      <span style={{ wordBreak: 'break-word', color: '#fecaca', fontWeight: 500 }}>{generationError}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     <button
                       type="button"
                       onClick={handleGenerate}
                       disabled={isGenerating || !uploadedImage}
                       className="tool-btn"
                       style={{
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        borderColor: 'rgba(239, 68, 68, 0.4)',
-                        color: '#fecaca',
-                        fontSize: '12px',
-                        padding: '5px 12px',
+                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                        borderColor: '#dc2626',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '12.5px',
+                        padding: '6px 14px',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '6px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)'
                       }}
                     >
                       <Icons.RotateCw size={13} /> {language === 'ta' ? 'மீண்டும் முயற்சி' : 'Retry'}
@@ -478,165 +579,162 @@ export default function ImageToVideoPage() {
                     <button
                       type="button"
                       onClick={() => setGenerationError(null)}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center' }}
                       title="Dismiss"
                     >
-                      <Icons.X size={15} />
+                      <Icons.X size={16} />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 1 & 2. Source Image & Motion Prompt Side-by-Side */}
-              <div className="image-motion-split-grid">
-                {/* 1. Source Image Upload & Preview Box */}
-                <div className="form-group">
-                  <div className="form-label-row">
-                    <label className="form-step-label">
-                      <span className="form-step-badge badge-purple">01</span>
-                      <span>{t('stepSourceImageLabel')}</span>
-                    </label>
-                    <div className="label-controls-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !isAiEnhance;
-                          setIsAiEnhance(next);
-                          showToast(
-                            next
-                              ? language === 'ta'
-                                ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
-                                : '✨ AI Enhance ON: Depth estimation & lighting bloom boosted!'
-                              : language === 'ta'
-                              ? 'AI மேம்பாடு அணைக்கப்பட்டது'
-                              : 'AI Enhance turned OFF',
-                            'Sparkles'
-                          );
-                        }}
-                        className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
-                        title="Toggle AI Enhance"
-                        aria-pressed={isAiEnhance}
-                      >
-                        <div className="enhance-btn-content">
-                          <Icons.Sparkles />
-                          <span>{t('aiEnhance')}</span>
-                        </div>
-                        <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
-                          <div className="enhance-switch-thumb"></div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    onClick={() => {
-                      if (fileInputRef.current) fileInputRef.current.click();
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragOver(true);
-                    }}
-                    onDragLeave={() => setIsDragOver(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragOver(false);
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleFileUpload(e.dataTransfer.files[0]);
-                      }
-                    }}
-                    className={`dropzone ${isDragOver ? 'drag-over' : ''} ${uploadedImage ? 'has-file' : ''}`}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileUpload(e.target.files[0]);
-                        }
+              {/* 1. Source Image Upload & Preview Box */}
+              <div className="form-group form-group-compact">
+                <div className="form-label-row">
+                  <label className="form-step-label">
+                    <span className="form-step-badge badge-purple">01</span>
+                    <span>{t('stepSourceImageLabel')}</span>
+                  </label>
+                  <div className="label-controls-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isAiEnhance;
+                        setIsAiEnhance(next);
+                        showToast(
+                          next
+                            ? language === 'ta'
+                              ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
+                              : '✨ AI Enhance ON: Depth estimation & lighting bloom boosted!'
+                            : language === 'ta'
+                            ? 'AI மேம்பாடு அணைக்கப்பட்டது'
+                            : 'AI Enhance turned OFF',
+                          'Sparkles'
+                        );
                       }}
-                      style={{ display: 'none' }}
-                    />
-
-                    {!uploadedImage ? (
-                      <div className="dropzone-empty-row">
-                        <div className="dropzone-icon icon-purple">
-                          <Icons.UploadCloud />
-                        </div>
-                        <div className="dropzone-text-group">
-                          <p className="dropzone-text">
-                            {t('dragDropText')} <span>{t('browseFiles')}</span>
-                          </p>
-                          <span className="dropzone-subtext">{t('dragDropSub')}</span>
-                        </div>
+                      className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
+                      title="Toggle AI Enhance"
+                      aria-pressed={isAiEnhance}
+                    >
+                      <div className="enhance-btn-content">
+                        <Icons.Sparkles />
+                        <span>{t('aiEnhance')}</span>
                       </div>
-                    ) : (
-                      <div className="uploaded-preview-row">
-                        <div className="uploaded-info-left">
-                          <div className="preview-thumb-wrap">
-                            <img src={uploadedImage} alt="Uploaded source" className="preview-thumb-img" />
-                          </div>
-                          <div className="uploaded-meta-group">
-                            <p className="uploaded-filename">{imageFilename || 'source_image.png'}</p>
-                            <span className="uploaded-status">
-                              <Icons.Check /> {t('imageReadyStatus')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="uploaded-actions-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (fileInputRef.current) fileInputRef.current.click();
-                            }}
-                            className="ctrl-btn-replace"
-                            title="Replace image"
-                          >
-                            {t('change')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setUploadedImage(null);
-                              setImageFilename('');
-                              showToast(
-                                language === 'ta' ? 'படம் நீக்கப்பட்டது' : 'Image removed',
-                                'Trash2'
-                              );
-                            }}
-                            className="ctrl-btn-remove"
-                            title="Remove image"
-                          >
-                            <Icons.Trash2 />
-                          </button>
-                        </div>
+                      <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
+                        <div className="enhance-switch-thumb"></div>
                       </div>
-                    )}
+                    </button>
                   </div>
                 </div>
 
-                {/* 2. Motion Description & Camera Prompt */}
-                <div className="form-group">
-                  <div className="form-label-row">
-                    <label htmlFor="motion-input" className="form-step-label">
-                      <span className="form-step-badge badge-purple">02</span>
-                      <span>{t('stepMotionPromptLabel')}</span>
-                    </label>
-                    <span className="char-counter">{motionPrompt.length}/500</span>
-                  </div>
+                <div
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.click();
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleFileUpload(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className={`dropzone ${isDragOver ? 'drag-over' : ''} ${uploadedImage ? 'has-file' : ''}`}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(e.target.files[0]);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
 
-                  <div className="textarea-wrapper">
-                    <textarea
-                      id="motion-input"
-                      rows={3.5}
-                      value={motionPrompt}
-                      onChange={(e) => setMotionPrompt(e.target.value)}
-                      placeholder={t('motionPromptPlaceholder')}
-                      className="thamili-textarea"
-                    />
-                  </div>
+                  {!uploadedImage ? (
+                    <div className="dropzone-empty-row">
+                      <div className="dropzone-icon icon-purple">
+                        <Icons.UploadCloud />
+                      </div>
+                      <div className="dropzone-text-group">
+                        <p className="dropzone-text">
+                          {t('dragDropText')} <span>{t('browseFiles')}</span>
+                        </p>
+                        <span className="dropzone-subtext">{t('dragDropSub')}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="uploaded-preview-row">
+                      <div className="uploaded-info-left">
+                        <div className="preview-thumb-wrap">
+                          <img src={uploadedImage} alt="Uploaded source" className="preview-thumb-img" />
+                        </div>
+                        <div className="uploaded-meta-group">
+                          <p className="uploaded-filename">{imageFilename || 'source_image.png'}</p>
+                          <span className="uploaded-status">
+                            <Icons.Check /> {t('imageReadyStatus')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="uploaded-actions-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (fileInputRef.current) fileInputRef.current.click();
+                          }}
+                          className="ctrl-btn-replace"
+                          title="Replace image"
+                        >
+                          {t('change')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedImage(null);
+                            setImageFilename('');
+                            showToast(
+                              language === 'ta' ? 'படம் நீக்கப்பட்டது' : 'Image removed',
+                              'Trash2'
+                            );
+                          }}
+                          className="ctrl-btn-remove"
+                          title="Remove image"
+                        >
+                          <Icons.Trash2 />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Motion Description & Camera Prompt */}
+              <div className="form-group form-group-compact">
+                <div className="form-label-row">
+                  <label htmlFor="motion-input" className="form-step-label">
+                    <span className="form-step-badge badge-purple">02</span>
+                    <span>{t('stepMotionPromptLabel')}</span>
+                  </label>
+                  <span className="char-counter">{motionPrompt.length}/500</span>
+                </div>
+
+                <div className="textarea-wrapper">
+                  <textarea
+                    id="motion-input"
+                    rows={2}
+                    value={motionPrompt}
+                    onChange={(e) => setMotionPrompt(e.target.value)}
+                    placeholder={t('motionPromptPlaceholder')}
+                    className="thamili-textarea"
+                  />
                 </div>
               </div>
 
@@ -646,6 +744,7 @@ export default function ImageToVideoPage() {
                   badge="03"
                   label={t('stepCharactersLabel')}
                   onOpenLibrary={() => navigate('/characters')}
+                  onSelectCharacter={handleSelectCharacter}
                 />
               </div>
             </div>
@@ -657,7 +756,7 @@ export default function ImageToVideoPage() {
                 disabled={isGenerating || !uploadedImage}
                 onClick={handleGenerate}
                 className="generate-btn btn-purple-gradient"
-                title="Animate Image to Video (Ctrl + Enter)"
+                title="Generate Video (Ctrl + Enter)"
               >
                 <div className="gen-btn-left">
                   <Icons.Sparkles />
@@ -666,11 +765,10 @@ export default function ImageToVideoPage() {
                       ? (language === 'ta' ? 'உருவாக்கப்படுகிறது...' : 'Generating...')
                       : generatedVideo?.videoUrl
                       ? (language === 'ta' ? 'புதிய வீடியோவை உருவாக்கவும்' : 'Generate New Video')
-                      : t('animateImageToVideo')}
+                      : t('animateImageToVideo', 'Generate')}
                   </span>
                 </div>
                 <div className="gen-btn-right">
-                  <span className="shortcut-tag">Ctrl + ↵</span>
                   <Icons.ArrowRight />
                 </div>
               </button>

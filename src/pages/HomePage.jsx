@@ -86,7 +86,7 @@ export default function HomePage() {
       {/* Tool Navigation Shortcuts */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', maxWidth: '780px' }}>
         {[
-          { name: 'AI Video', route: '/video', icon: <Icons.Video />, highlight: true },
+          { name: 'AI VIDEO', route: '/video', icon: <Icons.Video />, highlight: true },
           { name: 'Prompt to Video', route: '/prompt-to-video', icon: <Icons.Sparkles /> },
           { name: 'Image to Video', route: '/image-to-video', icon: <Icons.Image /> },
           { name: 'AI Chat', route: '/chat', icon: <Icons.Chat /> },

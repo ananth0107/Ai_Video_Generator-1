@@ -1,55 +1,18 @@
-import { fal } from '@fal-ai/client';
-import { interpretVideoPrompt } from '../utils/promptActionInterpreter';
-
 /**
- * Configure @fal-ai/client to use our secure server-side proxy.
- * This guarantees FAL_KEY is NEVER exposed in the browser or frontend bundle.
- * The server reads FAL_KEY from .env and injects the authorization header.
+ * THAMILI AI Video Studio - Unified Video Service
+ * 
+ * Flow:
+ * React Frontend -> Express Backend (/api/video/generate) -> OpenRouter (Prompt Enhance) -> Gemini Veo -> Real Video
+ * 
+ * Features:
+ * - Direct connection to backend Express endpoints
+ * - Full protection against stale async responses
+ * - Clear handling of HTTP 400, 401, 403, 404, 408, 429, 500
+ * - Quota error detection returning user-friendly messages
+ * - No API keys on client side
  */
-fal.config({
-  proxyUrl: '/api/fal/proxy'
-});
 
-/**
- * Test backend connection via server health check for Gemini & OpenRouter.
- */
-export async function testBackendConnection() {
-  try {
-    const res = await fetch('/api/health');
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    return {
-      ok: false,
-      error: err.message || 'Unable to communicate with backend service'
-    };
-  }
-}
-export const testPixazoConnection = testBackendConnection;
-export const testFalConnection = testBackendConnection;
-
-/**
- * Helper to convert image inputs (data URL or blob) into a Blob
- */
-async function toBlob(imageInput) {
-  if (imageInput instanceof Blob) {
-    return imageInput;
-  }
-  if (typeof imageInput === 'string') {
-    const res = await fetch(imageInput);
-    return await res.blob();
-  }
-  throw new Error('Unsupported image format for upload');
-}
-
-/**
- * Generate Real AI Video from Text Prompt using Fal.ai (LTX-Video)
- * Model: fal-ai/ltx-video
- *
-/**
- * Helper to normalize errors into user-friendly messages
- */
-function normalizeErrorMessage(err, defaultMsg = 'Video generation failed. Please try again.') {
+export function normalizeErrorMessage(err, defaultMsg = 'Video generation failed. Please try again.') {
   if (!err) return defaultMsg;
   const msg = typeof err === 'string' ? err : err.message || '';
   if (
@@ -69,17 +32,35 @@ function normalizeErrorMessage(err, defaultMsg = 'Video generation failed. Pleas
     return 'Video generation request timed out. Please try again.';
   }
   if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('API key')) {
-    return 'Authentication issue with the video service. Please verify your settings and API keys.';
+    return 'Authentication issue with the video service. Please verify your settings and API keys in .env.';
+  }
+  if (msg.includes('403') || msg.includes('Forbidden')) {
+    return 'Access denied. Please check project permissions.';
+  }
+  if (msg.includes('404') || msg.includes('Not Found')) {
+    return 'Video model or endpoint is currently unavailable.';
   }
   return msg || defaultMsg;
 }
 
 /**
- * Step 1: Enhance prompt using OpenRouter / AI via backend proxy
- *
- * @param {string} prompt User prompt
- * @param {object} options Options including style, resolution, aspectRatio, characters, model
- * @returns {Promise<{ success: boolean, enhancedPrompt: string, originalPrompt: string, model?: string, error?: string }>}
+ * Health check test
+ */
+export async function testBackendConnection() {
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return {
+      ok: false,
+      error: err.message || 'Unable to communicate with backend service'
+    };
+  }
+}
+
+/**
+ * Text prompt enhancement using OpenRouter via backend
  */
 export async function enhancePrompt(prompt, options = {}) {
   const {
@@ -90,9 +71,8 @@ export async function enhancePrompt(prompt, options = {}) {
     model
   } = options;
 
-  console.log('[Frontend] Calling backend AI prompt enhancement (/api/openrouter/chat)...');
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s safety timeout
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
 
   try {
     const response = await fetch('/api/openrouter/chat', {
@@ -100,7 +80,7 @@ export async function enhancePrompt(prompt, options = {}) {
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        prompt,
+        prompt: (prompt || '').trim(),
         style,
         resolution,
         aspectRatio,
@@ -112,7 +92,6 @@ export async function enhancePrompt(prompt, options = {}) {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) {
-      console.warn('[Frontend] AI enhancement fallback:', data.error);
       return {
         success: false,
         enhancedPrompt: prompt,
@@ -124,7 +103,6 @@ export async function enhancePrompt(prompt, options = {}) {
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
-    console.warn('[Frontend] AI enhance network error:', err.message);
     return {
       success: false,
       enhancedPrompt: prompt,
@@ -133,14 +111,13 @@ export async function enhancePrompt(prompt, options = {}) {
     };
   }
 }
-export { enhancePromptWithOpenRouter } from './openrouterService.js';
 
 /**
- * Step 2: Generate Video using backend video generation API (Gemini with OpenRouter enhancement)
- *
- * @param {string} prompt User prompt text
- * @param {object} options Options including enhancedPrompt, resolution, aspectRatio, characters, cameraMotion, lightingMood, onProgress callback
- * @returns {Promise<{ success: boolean, videoUrl: string, enhancedPrompt: string, results: object }>}
+ * Generate AI Video using Gemini Veo via Express Backend
+ * 
+ * @param {string} prompt Video prompt
+ * @param {object} options Video settings and options
+ * @returns {Promise<object>} Video generation response
  */
 export async function generateTextToVideo(prompt, options = {}) {
   const {
@@ -155,7 +132,7 @@ export async function generateTextToVideo(prompt, options = {}) {
   } = options;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute safety timeout
+  const timeoutId = setTimeout(() => controller.abort(), 240000); // 4-minute safety timeout
 
   try {
     const response = await fetch('/api/video/generate', {
@@ -165,7 +142,7 @@ export async function generateTextToVideo(prompt, options = {}) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        prompt: prompt.trim(),
+        prompt: (prompt || '').trim(),
         characters,
         settings: {
           style,
@@ -194,7 +171,7 @@ export async function generateTextToVideo(prompt, options = {}) {
       throw customErr;
     }
 
-    console.log('[Frontend] Generation results received:', data);
+    console.log('[Frontend] Video result received from Gemini:', data);
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
@@ -202,7 +179,7 @@ export async function generateTextToVideo(prompt, options = {}) {
     const friendlyMsg = isQuota
       ? 'Video generation quota is currently unavailable. Please check your Gemini API project quota/billing.'
       : normalizeErrorMessage(err, 'Video generation failed. Please try again.');
-    console.error('[Prompt-to-Video] Video generation failed:', friendlyMsg);
+    console.error('[Frontend] Video generation failed:', friendlyMsg);
     const errorObj = new Error(friendlyMsg);
     errorObj.status = err?.status || (isQuota ? 429 : 500);
     errorObj.isQuota = isQuota;
@@ -211,12 +188,12 @@ export async function generateTextToVideo(prompt, options = {}) {
 }
 
 /**
- * Generate Real AI Video from Image using Pixazo LTX Image-to-Video API via backend proxy
- *
- * @param {string|Blob} imageInput Image DataURL, URL, or base64
- * @param {string} prompt Motion description prompt
- * @param {object} options Options including aspectRatio, onProgress callback
- * @returns {Promise<{ success: boolean, videoUrl: string, origName: string, model: string, source: string, provider: string, interpretation: object }>}
+ * Generate AI Video from Image using Gemini Veo via Express Backend
+ * 
+ * @param {string|Blob} imageInput Image DataURL or URL
+ * @param {string} prompt Motion description
+ * @param {object} options Image-to-video options
+ * @returns {Promise<object>} Video generation response
  */
 export async function generateImageToVideo(imageInput, prompt = '', options = {}) {
   const {
@@ -224,22 +201,8 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
     onProgress = () => {}
   } = options;
 
-  const interpretation = interpretVideoPrompt(
-    prompt || 'The subject in the image comes to life with fluid realistic cinematic action'
-  );
-  const finalPrompt = interpretation.interpretedPrompt;
-
-  onProgress(15, 'Preparing reference image...');
-
-  console.log('[VIDEO] Image-to-Video generation request', {
-    prompt: finalPrompt,
-    aspectRatio
-  });
-
-  onProgress(35, 'Generating video frames...');
-
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout
+  const timeoutId = setTimeout(() => controller.abort(), 240000);
 
   try {
     const response = await fetch('/api/generate-image-to-video', {
@@ -250,7 +213,7 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
       signal: controller.signal,
       body: JSON.stringify({
         imageUrl: imageInput,
-        prompt: finalPrompt,
+        prompt: (prompt || '').trim(),
         aspectRatio
       })
     });
@@ -271,18 +234,13 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
       throw customErr;
     }
 
-    onProgress(95, 'Processing video...');
-    console.log('[VIDEO] Image-to-Video response received', data);
-
     return {
       success: true,
       videoUrl: data.videoUrl,
-      remoteUrl: data.remoteUrl,
-      origName: `ai_image_${Date.now()}.mp4`,
+      origName: `gemini_image_${Date.now()}.mp4`,
       model: data.model || 'gemini-veo-3.1',
-      source: data.source || 'gemini',
-      provider: data.provider || 'gemini',
-      interpretation
+      source: 'gemini',
+      provider: 'gemini'
     };
   } catch (err) {
     clearTimeout(timeoutId);
@@ -290,52 +248,10 @@ export async function generateImageToVideo(imageInput, prompt = '', options = {}
     const friendlyMsg = isQuota
       ? 'Video generation quota is currently unavailable. Please check your Gemini API project quota/billing.'
       : normalizeErrorMessage(err, 'Image to video generation failed. Please try again.');
-    console.error('[VIDEO] Image-to-Video generation error:', friendlyMsg);
+    console.error('[Frontend] Image-to-Video generation error:', friendlyMsg);
     const errorObj = new Error(friendlyMsg);
     errorObj.status = err?.status || (isQuota ? 429 : 500);
     errorObj.isQuota = isQuota;
     throw errorObj;
   }
 }
-
-/**
- * Generate Real AI Image from text prompt using Fal.ai (FLUX Schnell)
- * Model: fal-ai/flux/schnell
- *
- * @param {string} prompt Image description prompt
- * @returns {Promise<string>} Output image URL
- */
-export async function generateTextToImage(prompt) {
-  const payload = {
-    prompt: prompt.trim(),
-    image_size: 'square_hd',
-    num_images: 1,
-    enable_safety_checker: true
-  };
-
-  console.log('[FAL.AI FRONTEND REQUEST: Text-to-Image]', { model: 'fal-ai/flux/schnell', payload });
-
-  try {
-    const result = await fal.subscribe('fal-ai/flux/schnell', {
-      input: payload
-    });
-
-    console.log('[FAL.AI FRONTEND RESPONSE: Text-to-Image]', result);
-
-    const imageUrl = result?.data?.images?.[0]?.url || result?.images?.[0]?.url;
-    if (!imageUrl) {
-      throw new Error('Image generation completed on Fal.ai, but image URL was missing.');
-    }
-
-    return imageUrl;
-  } catch (err) {
-    console.error('[FAL.AI FRONTEND ERROR: Text-to-Image]', err);
-    throw err;
-  }
-}
-
-// Backward-compatibility and Pixazo aliases
-export const testFalKey = testFalConnection;
-export const testToken = testFalConnection;
-export const generatePixazoTextToVideo = generateTextToVideo;
-export const generatePixazoImageToVideo = generateImageToVideo;

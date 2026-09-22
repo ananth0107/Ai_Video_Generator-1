@@ -102,6 +102,13 @@ export function CharacterProvider({ children }) {
     return newCharacter;
   };
 
+  const updateCharacter = (id, updatedData) => {
+    setCustomCharacters((prev) =>
+      prev.map((char) => (char.id === id ? { ...char, ...updatedData, updatedAt: new Date().toISOString() } : char))
+    );
+    showToast(`Character updated successfully!`, 'Check');
+  };
+
   const deleteCharacter = (id) => {
     setCustomCharacters((prev) => prev.filter((char) => char.id !== id));
     setSelectedCharacterIds((prev) => prev.filter((item) => item !== id));
@@ -126,6 +133,7 @@ export function CharacterProvider({ children }) {
         clearSelectedCharacters,
         isCharacterSelected,
         addCharacter,
+        updateCharacter,
         deleteCharacter,
         getCharacterById
       }}

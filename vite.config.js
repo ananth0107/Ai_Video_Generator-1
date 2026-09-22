@@ -5,8 +5,8 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { orchestrateVideoGeneration, orchestrateImageToVideo, enhancePromptWithGemini } from './serverVideoService.js';
-import { executePixazoTextToVideo, executePixazoImageToVideo, testPixazoConnection } from './serverPixazoService.js';
+import { orchestrateVideoGeneration, orchestrateImageToVideo, enhancePromptWithGemini, generateVideoWithGemini } from './serverVideoService.js';
+import { enhancePromptWithOpenRouter, chatWithOpenRouter } from './serverOpenRouterService.js';
 
 // Load API keys from .env on the server side
 dotenv.config();
@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Vite plugin providing server-side API endpoints for Gemini, Hugging Face, and Video generation.
+ * Vite plugin providing server-side API endpoints for OpenRouter, Gemini, Hugging Face, and Video generation.
  */
 function videoApiPlugin() {
   const proxyHandler = async (req, res, next) => {
@@ -56,7 +56,69 @@ function videoApiPlugin() {
       }
     }
 
-    // Step 1: Dedicated Gemini prompt enhancement endpoint
+    // Step 1A: Dedicated OpenRouter Chat & Video Prompt Enhancement endpoint
+    if ((req.url === '/api/openrouter/chat' || req.url === '/api/openrouter/enhance-prompt') && req.method === 'POST') {
+      res.setHeader('Content-Type', 'application/json');
+      try {
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        const bodyStr = chunks.length > 0 ? Buffer.concat(chunks).toString('utf-8') : '{}';
+        const parsedBody = JSON.parse(bodyStr);
+        const userPrompt = parsedBody.prompt || '';
+        const messages = parsedBody.messages;
+        const style = parsedBody.style || 'Cinematic';
+        const resolution = parsedBody.resolution || '4k';
+        const aspectRatio = parsedBody.aspectRatio || '16:9';
+        const characters = parsedBody.characters || [];
+        const model = parsedBody.model;
+
+        if (!userPrompt && (!messages || !Array.isArray(messages) || messages.length === 0)) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Prompt string or messages array is required'
+          }));
+          return;
+        }
+
+        if (Array.isArray(messages) && messages.length > 0 && !userPrompt) {
+          const result = await chatWithOpenRouter({
+            messages,
+            model,
+            temperature: parsedBody.temperature,
+            systemPrompt: parsedBody.systemPrompt
+          });
+          res.statusCode = result.success ? 200 : (result.error?.includes('API_KEY') ? 500 : 400);
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        const result = await enhancePromptWithOpenRouter({
+          prompt: userPrompt,
+          style,
+          resolution,
+          aspectRatio,
+          characters,
+          model
+        });
+
+        res.statusCode = result.success ? 200 : (result.error?.includes('API_KEY') ? 500 : 400);
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        console.error('[OPENROUTER] Enhance Prompt Exception:', err);
+        res.statusCode = 500;
+        res.end(JSON.stringify({
+          success: false,
+          error: err.message || 'OpenRouter prompt enhancement failed',
+          enhancedPrompt: ''
+        }));
+      }
+      return;
+    }
+
+    // Step 1B: Unified prompt enhancement endpoint (OpenRouter priority with Gemini fallback)
     if (req.url === '/api/enhance-prompt' && req.method === 'POST') {
       res.setHeader('Content-Type', 'application/json');
       try {
@@ -71,19 +133,32 @@ function videoApiPlugin() {
         const resolution = parsedBody.resolution || '4k';
         const aspectRatio = parsedBody.aspectRatio || '16:9';
         const characters = parsedBody.characters || [];
+        const model = parsedBody.model;
 
-        const result = await enhancePromptWithGemini({
-          prompt: userPrompt,
-          style,
-          resolution,
-          aspectRatio,
-          characters
-        });
+        let result;
+        if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim() && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key') {
+          result = await enhancePromptWithOpenRouter({
+            prompt: userPrompt,
+            style,
+            resolution,
+            aspectRatio,
+            characters,
+            model
+          });
+        } else {
+          result = await enhancePromptWithGemini({
+            prompt: userPrompt,
+            style,
+            resolution,
+            aspectRatio,
+            characters
+          });
+        }
 
-        res.statusCode = 200;
+        res.statusCode = result.success ? 200 : 500;
         res.end(JSON.stringify(result));
       } catch (err) {
-        console.error('[GEMINI] Enhance Prompt Exception:', err);
+        console.error('[ENHANCE] Enhance Prompt Exception:', err);
         res.statusCode = 500;
         res.end(JSON.stringify({
           success: false,
@@ -93,8 +168,8 @@ function videoApiPlugin() {
       return;
     }
 
-    // Step 2A: Dedicated Text-to-Video generation endpoint (Gemini enhanced prompt -> Pixazo LTX-Video)
-    if ((req.url === '/api/generate-video' || req.url === '/api/pixazo/generate-text-to-video') && req.method === 'POST') {
+    // Step 2A: Dedicated Text-to-Video generation endpoint
+    if ((req.url === '/api/video/generate' || req.url === '/api/generate-video' || req.url === '/api/gemini/generate-video') && req.method === 'POST') {
       res.setHeader('Content-Type', 'application/json');
       try {
         const chunks = [];
@@ -104,49 +179,33 @@ function videoApiPlugin() {
         const bodyStr = chunks.length > 0 ? Buffer.concat(chunks).toString('utf-8') : '{}';
         const parsedBody = JSON.parse(bodyStr);
         const userPrompt = parsedBody.prompt || parsedBody.input?.prompt || '';
-        let enhancedPrompt = parsedBody.enhancedPrompt || '';
-        const resolution = parsedBody.resolution || '1080p';
-        const aspectRatio = parsedBody.aspectRatio || parsedBody.aspect_ratio || '16:9';
+        const settings = parsedBody.settings || {};
+        let enhancedPrompt = parsedBody.enhancedPrompt || settings.enhancedPrompt || '';
+        const style = settings.style || parsedBody.style || 'Cinematic';
+        const resolution = settings.resolution || parsedBody.resolution || '4k';
+        const aspectRatio = settings.aspectRatio || parsedBody.aspectRatio || parsedBody.aspect_ratio || '16:9';
         const characters = parsedBody.characters || [];
-        const isAiEnhance = parsedBody.isAiEnhance !== false && parsedBody.aiEnhanced !== false;
+        const cameraMotion = settings.cameraMotion || parsedBody.cameraMotion || 'Smooth Zoom';
+        const lightingMood = settings.lightingMood || parsedBody.lightingMood || 'Volumetric Sun';
 
-        console.log('[VIDEO] Generation started');
+        console.log('[VIDEO] Generation request received');
+        console.log(`[VIDEO] Original prompt: ${userPrompt}`);
 
-        let geminiResult = null;
-        if (isAiEnhance && (!enhancedPrompt || !enhancedPrompt.trim())) {
-          geminiResult = await enhancePromptWithGemini({
-            prompt: userPrompt,
-            resolution,
-            aspectRatio,
-            characters
-          });
-          enhancedPrompt = geminiResult.enhancedPrompt || userPrompt;
-        } else if (!enhancedPrompt) {
-          enhancedPrompt = userPrompt;
-        }
-
-        const pixazoResult = await executePixazoTextToVideo(enhancedPrompt, {
+        const result = await orchestrateVideoGeneration({
+          prompt: userPrompt,
+          enhancedPrompt,
+          resolution,
           aspectRatio,
-          resolution
+          characters,
+          cameraMotion,
+          lightingMood
         });
 
         console.log('[VIDEO] Video URL received');
         console.log('[VIDEO] Returning result to frontend');
 
         res.statusCode = 200;
-        res.end(JSON.stringify({
-          success: true,
-          videoUrl: pixazoResult.videoUrl,
-          remoteUrl: pixazoResult.remoteUrl,
-          enhancedPrompt,
-          originalPrompt: userPrompt,
-          provider: 'pixazo',
-          model: pixazoResult.model,
-          results: {
-            gemini: geminiResult || { success: true, enhancedPrompt },
-            pixazo: pixazoResult
-          }
-        }));
+        res.end(JSON.stringify(result));
         return;
       } catch (err) {
         const errorMsg = err.message || (typeof err === 'string' ? err : 'Video generation failed');
@@ -154,17 +213,14 @@ function videoApiPlugin() {
         res.statusCode = err.status || 500;
         res.end(JSON.stringify({
           success: false,
-          error: errorMsg,
-          results: {
-            pixazo: { success: false, error: errorMsg }
-          }
+          error: errorMsg
         }));
         return;
       }
     }
 
-    // Step 2B: Dedicated Image-to-Video generation endpoint (Pixazo LTX Image-to-Video)
-    if ((req.url === '/api/generate-image-to-video' || req.url === '/api/pixazo/generate-image-to-video') && req.method === 'POST') {
+    // Step 2B: Image-to-Video generation endpoint
+    if ((req.url === '/api/generate-image-to-video' || req.url === '/api/gemini/generate-image-to-video') && req.method === 'POST') {
       res.setHeader('Content-Type', 'application/json');
       try {
         const chunks = [];
@@ -173,57 +229,36 @@ function videoApiPlugin() {
         }
         const bodyStr = chunks.length > 0 ? Buffer.concat(chunks).toString('utf-8') : '{}';
         const parsedBody = JSON.parse(bodyStr);
-        const imageUrl = parsedBody.imageUrl || parsedBody.image_url || parsedBody.image || '';
+        const imageUrl = parsedBody.imageUrl || parsedBody.image || '';
         const prompt = parsedBody.prompt || '';
-        const aspectRatio = parsedBody.aspectRatio || parsedBody.aspect_ratio || '16:9';
+        const aspectRatio = parsedBody.aspectRatio || '16:9';
 
-        console.log('[VIDEO] Image-to-Video generation requested');
-
-        if (!imageUrl) {
-          res.statusCode = 400;
-          res.end(JSON.stringify({ success: false, error: 'Image is required for image-to-video generation' }));
-          return;
-        }
-
-        const pixazoResult = await executePixazoImageToVideo(imageUrl, prompt, {
+        const result = await orchestrateImageToVideo({
+          imageUrl,
+          prompt,
           aspectRatio
         });
 
-        console.log('[VIDEO] Image-to-Video generation completed');
-
         res.statusCode = 200;
-        res.end(JSON.stringify({
-          success: true,
-          videoUrl: pixazoResult.videoUrl,
-          remoteUrl: pixazoResult.remoteUrl,
-          prompt,
-          provider: 'pixazo',
-          model: pixazoResult.model,
-          results: {
-            pixazo: pixazoResult
-          }
-        }));
+        res.end(JSON.stringify(result));
         return;
       } catch (err) {
-        const errorMsg = err.message || (typeof err === 'string' ? err : 'Image-to-video generation failed');
+        const errorMsg = err.message || (typeof err === 'string' ? err : 'Image to video generation failed');
         console.error('[VIDEO] Image-to-Video Exception:', errorMsg);
         res.statusCode = err.status || 500;
         res.end(JSON.stringify({
           success: false,
-          error: errorMsg,
-          results: {
-            pixazo: { success: false, error: errorMsg }
-          }
+          error: errorMsg
         }));
         return;
       }
     }
 
     // 1. Health check endpoint (for Studio Settings verification)
-    if (req.url === '/api/pixazo/health' || req.url === '/api/fal/health' || req.url === '/api/health') {
+    if (req.url === '/api/health' || req.url === '/api/gemini/health') {
       res.setHeader('Content-Type', 'application/json');
       const geminiKey = process.env.GEMINI_API_KEY;
-      const pixazoKey = process.env.PIXAZO_API_KEY;
+      const openrouterKey = process.env.OPENROUTER_API_KEY;
 
       const results = [];
       let allOk = false;
@@ -243,12 +278,12 @@ function videoApiPlugin() {
         }
       }
 
-      // Check Pixazo API Key
-      if (pixazoKey && pixazoKey.trim() && pixazoKey !== 'MY_PIXAZO_API_KEY' && pixazoKey !== 'your_pixazo_api_key') {
-        results.push('Pixazo API: Active (PIXAZO_API_KEY configured)');
+      // Check OpenRouter API Key
+      if (openrouterKey && openrouterKey.trim() && openrouterKey !== 'your_openrouter_api_key' && openrouterKey !== 'MY_OPENROUTER_KEY') {
+        results.push('OpenRouter AI: Active (OPENROUTER_API_KEY configured)');
         allOk = true;
       } else {
-        results.push('Pixazo API: PIXAZO_API_KEY not set in .env');
+        results.push('OpenRouter AI: OPENROUTER_API_KEY not configured in .env');
       }
 
       if (allOk) {

@@ -7,7 +7,7 @@ const STORAGE_KEY = 'thamili_language_preference';
 export const translations = {
   en: {
     // Top Header
-    headerTitle: 'THAMILI AI VIDEO',
+    headerTitle: 'AI VIDEO',
     promptToVideoBreadcrumb: 'PROMPT TO VIDEO',
     imageToVideoBreadcrumb: 'IMAGE TO VIDEO',
     charactersBreadcrumb: 'CHARACTERS LIBRARY',
@@ -18,8 +18,28 @@ export const translations = {
     langName: 'English',
     langSwitchTitle: 'Language',
 
+    // THAMILI AI Video Hub
+    videoHubTitle: 'AI VIDEO',
+    videoHubSubtitle: 'Create stunning videos with the power of AI.',
+    videoHubSupporting: 'Transform your ideas and images into cinematic AI videos with THAMILI.',
+    p2vCardHubTitle: 'Prompt to Video',
+    p2vCardHubDesc: 'Turn your text ideas into cinematic AI-generated videos.',
+    p2vCardHubBtn: 'Create with Prompt',
+    i2vCardHubTitle: 'Image to Video',
+    i2vCardHubDesc: 'Bring your images to life with smooth AI-generated motion.',
+    i2vCardHubBtn: 'Animate Image',
+    powerfulCreationTitle: 'Powerful Video Creation',
+    featureItem1Title: 'Prompt-based video generation',
+    featureItem1Desc: 'Generate cinematic 4K videos from natural language descriptions.',
+    featureItem2Title: 'Image-to-video generation',
+    featureItem2Desc: 'Add dynamic neural motion and camera controls to still photos.',
+    featureItem3Title: 'Cinematic AI output',
+    featureItem3Desc: 'Studio lighting, 60 FPS keyframes, and realistic physics simulation.',
+    featureItem4Title: 'Easy video workflow',
+    featureItem4Desc: 'Seamless prompt enhancement, character consistency, and history tracking.',
+
     // Sidebar
-    aiVideo: 'AI Video',
+    aiVideo: 'AI VIDEO',
     promptToVideo: 'Prompt to Video',
     imageToVideo: 'Image to Video',
     characters: 'Characters',
@@ -66,6 +86,7 @@ export const translations = {
     videoDeletedSuccess: 'Video deleted from History',
 
     // Common Buttons & Actions
+    newChat: 'New Chat',
     generate: 'Generate',
     cancel: 'Cancel',
     save: 'Save',
@@ -112,7 +133,7 @@ export const translations = {
     stepCameraDynamicsLabel: 'Camera Dynamics',
     stepAtmosphericLightingLabel: 'Atmospheric Lighting',
     
-    generate4kVideo: 'Generate 4K Video',
+    generate4kVideo: 'Generate',
 
     // Image to Video Studio
     i2vTitle: 'Image to Video Studio',
@@ -129,9 +150,7 @@ export const translations = {
     stepMotionPromptLabel: 'Motion Dynamics & Camera Prompt',
     motionPromptPlaceholder: 'Describe how the image elements and camera should move... (e.g. Slowly zoom toward the subject while lights sweep smoothly)',
     quickPromptsLabel: 'Quick Prompts:',
-    stepMotionIntensityLabel: 'Motion Intensity',
-    stepCameraVectorLabel: 'Camera Vector',
-    animateImageToVideo: 'Animate Image to 4K Video',
+    animateImageToVideo: 'Generate',
 
     // Characters Page
     charactersPageTitle: 'AI Characters Studio',
@@ -248,7 +267,7 @@ export const translations = {
 
   ta: {
     // Top Header
-    headerTitle: 'தமிழ் AI வீடியோ',
+    headerTitle: 'AI VIDEO',
     promptToVideoBreadcrumb: 'பிராம்ட் டூ வீடியோ',
     imageToVideoBreadcrumb: 'படத்திலிருந்து வீடியோ',
     charactersBreadcrumb: 'கதாபாத்திரங்கள் நூலகம்',
@@ -259,8 +278,28 @@ export const translations = {
     langName: 'தமிழ்',
     langSwitchTitle: 'மொழி',
 
+    // THAMILI AI Video Hub
+    videoHubTitle: 'AI VIDEO',
+    videoHubSubtitle: 'AI இன் ஆற்றலால் அற்புதமான வீடியோக்களை உருவாக்குங்கள்.',
+    videoHubSupporting: 'உங்கள் யோசனைகளையும் படங்களையும் THAMILI மூலம் சினிமாட்டிக் AI வீடியோக்களாக மாற்றவும்.',
+    p2vCardHubTitle: 'பிராம்ட் டூ வீடியோ (Prompt to Video)',
+    p2vCardHubDesc: 'உங்கள் உரை யோசனைகளை சினிமாட்டிக் AI வீடியோக்களாக மாற்றவும்.',
+    p2vCardHubBtn: 'பிராம்ட் மூலம் உருவாக்கு',
+    i2vCardHubTitle: 'படத்திலிருந்து வீடியோ (Image to Video)',
+    i2vCardHubDesc: 'மென்மையான AI இயக்கம் மற்றும் கேமரா கோணங்களுடன் படங்களுக்கு உயிர் கொடுங்கள்.',
+    i2vCardHubBtn: 'படத்தை அனிமேட் செய்',
+    powerfulCreationTitle: 'சக்திவாய்ந்த வீடியோ உருவாக்கம்',
+    featureItem1Title: 'பிராம்ட் அடிப்படையிலான வீடியோ உருவாக்கம்',
+    featureItem1Desc: 'இயற்கை உரை விளக்கங்களிலிருந்து 4K சினிமா வீடியோக்களை உருவாக்குங்கள்.',
+    featureItem2Title: 'படத்திலிருந்து வீடியோ உருவாக்கம்',
+    featureItem2Desc: 'நிலையான புகைப்படங்களுக்கு டைனமிக் நியூரல் இயக்கம் மற்றும் கேமரா கோணங்களை சேர்க்கவும்.',
+    featureItem3Title: 'சினிமாட்டிக் AI வெளியீடு',
+    featureItem3Desc: 'ஸ்டுடியோ லைட்டிங், 60 FPS கீஃப்ரேம்கள் மற்றும் யதார்த்த இயற்பியல் உருவகப்படுத்துதல்.',
+    featureItem4Title: 'எளிதான வீடியோ பணிப்பாய்வு',
+    featureItem4Desc: 'தடையற்ற பிராம்ட் மேம்பாடு, கதாபாத்திர நிலைத்தன்மை மற்றும் வரலாற்று கண்காணிப்பு.',
+
     // Sidebar
-    aiVideo: 'AI வீடியோ',
+    aiVideo: 'AI VIDEO',
     promptToVideo: 'பிராம்ட் டூ வீடியோ',
     imageToVideo: 'படத்திலிருந்து வீடியோ',
     characters: 'கதாபாத்திரங்கள்',
@@ -307,6 +346,7 @@ export const translations = {
     videoDeletedSuccess: 'வீடியோ வரலாற்றிலிருந்து நீக்கப்பட்டது',
 
     // Common Buttons & Actions
+    newChat: 'புதிய சாட் (New Chat)',
     generate: 'உருவாக்கு',
     cancel: 'ரத்து செய்',
     save: 'சேமி',
@@ -353,7 +393,7 @@ export const translations = {
     stepCameraDynamicsLabel: 'கேமரா இயக்கம் (Camera Dynamics)',
     stepAtmosphericLightingLabel: 'சூழல் ஒளி அமைப்பு (Atmospheric Lighting)',
     
-    generate4kVideo: '4K வீடியோவை உருவாக்கு',
+    generate4kVideo: 'உருவாக்கு',
 
     // Image to Video Studio
     i2vTitle: 'படத்திலிருந்து வீடியோ ஸ்டுடியோ',
@@ -370,9 +410,7 @@ export const translations = {
     stepMotionPromptLabel: 'இயக்க விவரம் & கேமரா பிராம்ட்',
     motionPromptPlaceholder: 'பட உறுப்புகளும் கேமராவும் எவ்வாறு நகர வேண்டும் என்பதை விவரிக்கவும்... (எ.கா. ஒளிரும் ஒளிக்கற்றைகளுடன் மையப் பொருளை நோக்கி மெதுவாக ஜூம் செய்க)',
     quickPromptsLabel: 'விரைவு பிராம்ட்கள்:',
-    stepMotionIntensityLabel: 'இயக்க வேகம் (Motion Intensity)',
-    stepCameraVectorLabel: 'கேமரா திசை (Camera Vector)',
-    animateImageToVideo: 'படத்தை 4K வீடியோவாக அனிமேட் செய்',
+    animateImageToVideo: 'உருவாக்கு',
 
     // Characters Page
     charactersPageTitle: 'AI கதாபாத்திரங்கள் ஸ்டுடியோ',

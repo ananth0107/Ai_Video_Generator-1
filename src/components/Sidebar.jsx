@@ -44,13 +44,14 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
   const isHistory = path.includes('history');
   const isCharacters = path.includes('characters');
   const isImageToVideo = path.includes('image-to-video');
+  const isVideoHub = path === '/video' || path === '/thamili-ai-video' || path === '/hub';
   const isPromptToVideo =
-    (path.includes('prompt-to-video') || path.includes('prompt') || path === '/' || path === '/video') &&
-    !isImageToVideo &&
+    (path.includes('prompt-to-video') || (path.includes('prompt') && !isImageToVideo)) &&
+    !isVideoHub &&
     !isCharacters &&
     !isHistory;
 
-  const isAiVideoActive = (isPromptToVideo || isImageToVideo) && !isHistory;
+  const isAiVideoActive = isVideoHub || isPromptToVideo || isImageToVideo;
 
   // Auto-expand history in sidebar when user visits history page
   useEffect(() => {
@@ -140,7 +141,7 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
       <aside className={`thamili-sidebar-nav ${isMobileOpen ? 'mobile-open' : ''}`}>
         {/* Brand Header */}
         <div className="sidebar-brand-top">
-          <Link to="/prompt-to-video" onClick={onCloseMobile} className="sidebar-brand-link" title="THAMILI AI">
+          <Link to="/video" onClick={onCloseMobile} className="sidebar-brand-link" title="THAMILI AI">
             <ThamiliBrandLogo height={42} />
           </Link>
 
@@ -154,21 +155,33 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
           </button>
         </div>
 
-        {/* Navigation List - Clean Tree with AI Video, Characters & History */}
+        {/* Navigation List - Clean Tree with THAMILI AI Video, Characters & History */}
         <div className="sidebar-scrollable-menu">
           <div className="nav-items-group">
-            {/* AI Video Parent Group */}
+            {/* THAMILI AI Video Parent Group */}
             <div className="nav-group-block">
               <button
                 type="button"
-                className={`nav-item-btn video-parent-btn ${isAiVideoActive ? 'active-parent' : ''}`}
-                onClick={() => setIsVideoOpen(!isVideoOpen)}
+                className={`nav-item-btn video-parent-btn ${isVideoHub ? 'active-parent active-item' : isAiVideoActive ? 'active-parent' : ''}`}
+                onClick={() => {
+                  navigate('/video');
+                  setIsVideoOpen(true);
+                  onCloseMobile();
+                }}
+                title="AI VIDEO Hub"
               >
                 <div className="nav-btn-left">
                   <span className="sidebar-item-icon"><Icons.Video /></span>
                   <span className="sidebar-item-text">{t('aiVideo')}</span>
                 </div>
-                <span className={`nav-arrow ${isVideoOpen ? 'expanded' : ''}`}>
+                <span
+                  className={`nav-arrow ${isVideoOpen ? 'expanded' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsVideoOpen(!isVideoOpen);
+                  }}
+                  title="Toggle Video Submenu"
+                >
                   <Icons.ChevronDown />
                 </span>
               </button>

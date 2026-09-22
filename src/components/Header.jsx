@@ -33,11 +33,13 @@ export default function Header({ onToggleMobileSidebar = () => {} }) {
 
   const path = location.pathname.toLowerCase();
   const isHistory = path.includes('history');
-  const isPrompt = (path.includes('prompt') || path === '/' || path === '/video') && !isHistory;
+  const isVideoHub = path === '/video' || path === '/thamili-ai-video' || path === '/hub';
+  const isPrompt = (path.includes('prompt-to-video') || (path.includes('prompt') && !path.includes('image-to-video'))) && !isVideoHub && !isHistory;
   const isImageToVideo = path.includes('image-to-video');
   const isCharacters = path.includes('characters');
 
   const getSubBreadcrumb = () => {
+    if (isVideoHub) return null;
     if (isHistory) return t('historyBreadcrumb', 'HISTORY');
     if (isPrompt && !isImageToVideo) return t('promptToVideoBreadcrumb');
     if (isImageToVideo) return t('imageToVideoBreadcrumb');
@@ -81,17 +83,21 @@ export default function Header({ onToggleMobileSidebar = () => {} }) {
         </button>
 
         <div className="header-breadcrumbs">
-          <Link to="/prompt-to-video" className="crumb-main-text">
+          <Link to="/video" className="crumb-main-text">
             {t('headerTitle')}
           </Link>
-          <span className="crumb-divider">/</span>
-          <span className="crumb-active-text">{getSubBreadcrumb()}</span>
+          {!isVideoHub && (
+            <>
+              <span className="crumb-divider">/</span>
+              <span className="crumb-active-text">{getSubBreadcrumb()}</span>
+            </>
+          )}
         </div>
       </div>
 
       {/* 2. CENTER COLUMN: MATHEMATICALLY CENTERED THAMILI LOGO (ONLY LOGO, NO TEXT) */}
       <div className="header-center-col">
-        <Link to="/prompt-to-video" className="header-center-logo-link" title="THAMILI AI">
+        <Link to="/video" className="header-center-logo-link" title="THAMILI AI">
           <ThamiliBrandLogo height={46} />
         </Link>
       </div>

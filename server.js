@@ -3,8 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { orchestrateVideoGeneration, orchestrateImageToVideo, enhancePromptWithGemini } from './serverVideoService.js';
-import { executePixazoTextToVideo, executePixazoImageToVideo, testPixazoConnection } from './serverPixazoService.js';
+import { orchestrateVideoGeneration, orchestrateImageToVideo, enhancePromptWithGemini, generateVideoWithGemini } from './serverVideoService.js';
+import { enhancePromptWithOpenRouter, chatWithOpenRouter } from './serverOpenRouterService.js';
 import fs from 'fs';
 
 dotenv.config();
@@ -55,7 +55,57 @@ app.get('/generated/:filename', (req, res) => {
 });
 app.use('/generated', express.static(path.join(__dirname, 'public', 'generated')));
 
-// Step 1: Dedicated Gemini prompt enhancement endpoint
+// Step 1A: Dedicated OpenRouter Chat & Video Prompt Enhancement endpoint
+app.post(['/api/openrouter/chat', '/api/openrouter/enhance-prompt'], express.json(), async (req, res) => {
+  try {
+    const userPrompt = req.body.prompt || '';
+    const messages = req.body.messages;
+    const style = req.body.style || 'Cinematic';
+    const resolution = req.body.resolution || '4k';
+    const aspectRatio = req.body.aspectRatio || '16:9';
+    const characters = req.body.characters || [];
+    const model = req.body.model;
+
+    if (!userPrompt && (!messages || !Array.isArray(messages) || messages.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt string or messages array is required'
+      });
+    }
+
+    if (Array.isArray(messages) && messages.length > 0 && !userPrompt) {
+      const result = await chatWithOpenRouter({
+        messages,
+        model,
+        temperature: req.body.temperature,
+        systemPrompt: req.body.systemPrompt
+      });
+      const statusCode = result.success ? 200 : (result.error?.includes('API_KEY') ? 500 : 400);
+      return res.status(statusCode).json(result);
+    }
+
+    const result = await enhancePromptWithOpenRouter({
+      prompt: userPrompt,
+      style,
+      resolution,
+      aspectRatio,
+      characters,
+      model
+    });
+
+    const statusCode = result.success ? 200 : (result.error?.includes('API_KEY') ? 500 : 400);
+    return res.status(statusCode).json(result);
+  } catch (err) {
+    console.error('[OPENROUTER] API Exception:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'OpenRouter prompt enhancement failed',
+      enhancedPrompt: req.body.prompt || ''
+    });
+  }
+});
+
+// Step 1B: Unified prompt enhancement endpoint (OpenRouter priority with Gemini fallback)
 app.post('/api/enhance-prompt', express.json(), async (req, res) => {
   try {
     const userPrompt = req.body.prompt || '';
@@ -63,18 +113,31 @@ app.post('/api/enhance-prompt', express.json(), async (req, res) => {
     const resolution = req.body.resolution || '4k';
     const aspectRatio = req.body.aspectRatio || '16:9';
     const characters = req.body.characters || [];
+    const model = req.body.model;
 
-    const result = await enhancePromptWithGemini({
-      prompt: userPrompt,
-      style,
-      resolution,
-      aspectRatio,
-      characters
-    });
+    let result;
+    if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim() && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key') {
+      result = await enhancePromptWithOpenRouter({
+        prompt: userPrompt,
+        style,
+        resolution,
+        aspectRatio,
+        characters,
+        model
+      });
+    } else {
+      result = await enhancePromptWithGemini({
+        prompt: userPrompt,
+        style,
+        resolution,
+        aspectRatio,
+        characters
+      });
+    }
 
-    res.json(result);
+    res.status(result.success ? 200 : 500).json(result);
   } catch (err) {
-    console.error('[GEMINI] Enhance Prompt Exception:', err);
+    console.error('[ENHANCE] Enhance Prompt Exception:', err);
     res.status(500).json({
       success: false,
       error: err.message || 'Prompt enhancement failed',
@@ -83,112 +146,72 @@ app.post('/api/enhance-prompt', express.json(), async (req, res) => {
   }
 });
 
-// Step 2A: Dedicated Text-to-Video generation endpoint (Gemini enhanced prompt -> Pixazo LTX-Video)
-app.post(['/api/generate-video', '/api/pixazo/generate-text-to-video'], express.json(), async (req, res) => {
+// Step 2A: Dedicated Text-to-Video generation endpoint
+app.post(['/api/video/generate', '/api/generate-video', '/api/gemini/generate-video'], express.json(), async (req, res) => {
   try {
     const userPrompt = req.body.prompt || req.body.input?.prompt || '';
     let enhancedPrompt = req.body.enhancedPrompt || '';
-    const resolution = req.body.resolution || '1080p';
+    const resolution = req.body.resolution || '4k';
     const aspectRatio = req.body.aspectRatio || req.body.aspect_ratio || '16:9';
     const characters = req.body.characters || [];
-    const isAiEnhance = req.body.isAiEnhance !== false && req.body.aiEnhanced !== false;
+    const cameraMotion = req.body.cameraMotion || 'Smooth Zoom';
+    const lightingMood = req.body.lightingMood || 'Volumetric Sun';
 
-    console.log('[VIDEO] Generation started');
+    console.log('[VIDEO] Generation request received');
+    console.log(`[VIDEO] Original prompt: ${userPrompt}`);
 
-    let geminiResult = null;
-    if (isAiEnhance && (!enhancedPrompt || !enhancedPrompt.trim())) {
-      geminiResult = await enhancePromptWithGemini({
-        prompt: userPrompt,
-        resolution,
-        aspectRatio,
-        characters
-      });
-      enhancedPrompt = geminiResult.enhancedPrompt || userPrompt;
-    } else if (!enhancedPrompt) {
-      enhancedPrompt = userPrompt;
-    }
-
-    const pixazoResult = await executePixazoTextToVideo(enhancedPrompt, {
+    const result = await orchestrateVideoGeneration({
+      prompt: userPrompt,
+      enhancedPrompt,
+      resolution,
       aspectRatio,
-      resolution
+      characters,
+      cameraMotion,
+      lightingMood
     });
 
     console.log('[VIDEO] Video URL received');
     console.log('[VIDEO] Returning result to frontend');
 
-    return res.json({
-      success: true,
-      videoUrl: pixazoResult.videoUrl,
-      remoteUrl: pixazoResult.remoteUrl,
-      enhancedPrompt,
-      originalPrompt: userPrompt,
-      provider: 'pixazo',
-      model: pixazoResult.model,
-      results: {
-        gemini: geminiResult || { success: true, enhancedPrompt },
-        pixazo: pixazoResult
-      }
-    });
+    return res.json(result);
   } catch (err) {
     const errorMsg = err.message || (typeof err === 'string' ? err : 'Video generation failed');
     console.error('[VIDEO] Video Generation Exception:', errorMsg);
     return res.status(err.status || 500).json({
       success: false,
-      error: errorMsg,
-      results: {
-        pixazo: { success: false, error: errorMsg }
-      }
+      error: errorMsg
     });
   }
 });
 
-// Step 2B: Dedicated Image-to-Video generation endpoint (Pixazo LTX Image-to-Video)
-app.post(['/api/generate-image-to-video', '/api/pixazo/generate-image-to-video'], express.json({ limit: '50mb' }), async (req, res) => {
+// Step 2B: Dedicated Image-to-Video generation endpoint
+app.post(['/api/generate-image-to-video', '/api/gemini/generate-image-to-video'], express.json(), async (req, res) => {
   try {
-    const imageUrl = req.body.imageUrl || req.body.image_url || req.body.image || '';
+    const imageUrl = req.body.imageUrl || req.body.image || '';
     const prompt = req.body.prompt || '';
-    const aspectRatio = req.body.aspectRatio || req.body.aspect_ratio || '16:9';
+    const aspectRatio = req.body.aspectRatio || '16:9';
 
-    console.log('[VIDEO] Image-to-Video generation requested');
-
-    if (!imageUrl) {
-      return res.status(400).json({ success: false, error: 'Image is required for image-to-video generation' });
-    }
-
-    const pixazoResult = await executePixazoImageToVideo(imageUrl, prompt, {
+    const result = await orchestrateImageToVideo({
+      imageUrl,
+      prompt,
       aspectRatio
     });
 
-    console.log('[VIDEO] Image-to-Video generation completed');
-
-    return res.json({
-      success: true,
-      videoUrl: pixazoResult.videoUrl,
-      remoteUrl: pixazoResult.remoteUrl,
-      prompt,
-      provider: 'pixazo',
-      model: pixazoResult.model,
-      results: {
-        pixazo: pixazoResult
-      }
-    });
+    return res.json(result);
   } catch (err) {
-    const errorMsg = err.message || (typeof err === 'string' ? err : 'Image-to-video generation failed');
-    console.error('[VIDEO] Image-to-Video Exception:', errorMsg);
+    const errorMsg = err.message || (typeof err === 'string' ? err : 'Image to video generation failed');
+    console.error('[VIDEO] Image to Video Generation Exception:', errorMsg);
     return res.status(err.status || 500).json({
       success: false,
-      error: errorMsg,
-      results: {
-        pixazo: { success: false, error: errorMsg }
-      }
+      error: errorMsg
     });
   }
 });
 
 // Health check endpoint
-app.get(['/api/pixazo/health', '/api/fal/health', '/api/health'], async (_req, res) => {
+app.get(['/api/health', '/api/gemini/health'], async (_req, res) => {
   const geminiKey = process.env.GEMINI_API_KEY;
-  const pixazoKey = process.env.PIXAZO_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
 
   const results = [];
   let allOk = false;
@@ -208,12 +231,12 @@ app.get(['/api/pixazo/health', '/api/fal/health', '/api/health'], async (_req, r
     }
   }
 
-  // Check Pixazo API Key
-  if (pixazoKey && pixazoKey.trim() && pixazoKey !== 'MY_PIXAZO_API_KEY' && pixazoKey !== 'your_pixazo_api_key') {
-    results.push('Pixazo API: Active (PIXAZO_API_KEY configured)');
+  // Check OpenRouter API Key
+  if (openrouterKey && openrouterKey.trim() && openrouterKey !== 'your_openrouter_api_key' && openrouterKey !== 'MY_OPENROUTER_KEY') {
+    results.push('OpenRouter AI: Active (OPENROUTER_API_KEY configured)');
     allOk = true;
   } else {
-    results.push('Pixazo API: PIXAZO_API_KEY not set in .env');
+    results.push('OpenRouter AI: OPENROUTER_API_KEY not configured in .env');
   }
 
   if (allOk) {

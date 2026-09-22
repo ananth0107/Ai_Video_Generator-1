@@ -17,7 +17,8 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CharactersPage = lazy(() => import('./pages/CharactersPage'));
-const VideoHubPage = lazy(() => import('./pages/VideoHubPage'));
+const VideoPage = lazy(() => import('./pages/VideoPage'));
+const VideoHubPage = lazy(() => import('./pages/VideoPage'));
 const GeneratedOutputPage = lazy(() => import('./pages/GeneratedOutputPage'));
 
 export default function App() {
@@ -41,11 +42,12 @@ export default function App() {
           <main className="thamili-page-main">
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
-                {/* Default Studio Route -> Prompt to Video */}
-                <Route path="/" element={<PromptToVideoPage />} />
-                <Route path="/home" element={<PromptToVideoPage />} />
-                <Route path="/video" element={<PromptToVideoPage />} />
-                <Route path="/hub" element={<VideoHubPage />} />
+                {/* Dedicated THAMILI AI Video Hub Landing Routes */}
+                <Route path="/" element={<VideoPage />} />
+                <Route path="/video" element={<VideoPage />} />
+                <Route path="/thamili-ai-video" element={<VideoPage />} />
+                <Route path="/hub" element={<VideoPage />} />
+                <Route path="/home" element={<VideoPage />} />
 
                 {/* Prompt to Video Studio */}
                 <Route path="/prompt-to-video" element={<PromptToVideoPage />} />
@@ -59,6 +61,8 @@ export default function App() {
 
                 {/* Characters Studio */}
                 <Route path="/characters" element={<CharactersPage />} />
+                <Route path="/characters/new" element={<CharactersPage />} />
+                <Route path="/characters/create" element={<CharactersPage />} />
 
                 {/* Generated Video Output */}
                 <Route path="/output" element={<GeneratedOutputPage />} />
