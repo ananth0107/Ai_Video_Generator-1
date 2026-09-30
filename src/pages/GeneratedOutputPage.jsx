@@ -28,7 +28,7 @@ export default function GeneratedOutputPage() {
           <div className="heading-row" style={{ justifyContent: 'center' }}>
             <h1 className="main-title">Generated Video Output</h1>
             <span className="version-badge">
-              <Icons.Sparkles /> Studio v2.0
+              Studio v2.0
             </span>
           </div>
           <p className="main-subtitle">
@@ -54,7 +54,7 @@ export default function GeneratedOutputPage() {
               className="generate-btn"
               style={{ width: 'auto', padding: '12px 24px', fontSize: '14px' }}
             >
-              <Icons.Sparkles />
+              <Icons.Film />
               <span>Create with Prompt to Video</span>
             </button>
 
@@ -114,7 +114,7 @@ export default function GeneratedOutputPage() {
               className="tool-btn"
               style={{ fontSize: '13px', padding: '8px 16px' }}
             >
-              {isPromptType ? <Icons.Image /> : <Icons.Sparkles />}
+              {isPromptType ? <Icons.Image /> : <Icons.Film />}
               <span>{isPromptType ? 'Switch to Image to Video' : 'Switch to Prompt to Video'}</span>
             </button>
           </div>

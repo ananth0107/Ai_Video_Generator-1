@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const ThemeContext = createContext({
   theme: 'dark',
   toggleTheme: () => {},
-  setTheme: () => {}
+  setTheme: () => {},
+  isDark: true
 });
 
 export function ThemeProvider({ children }) {
@@ -42,18 +43,25 @@ export function ThemeProvider({ children }) {
     }
   }, [theme]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  }, []);
 
-  const setTheme = (newTheme) => {
+  const setTheme = useCallback((newTheme) => {
     if (newTheme === 'dark' || newTheme === 'light') {
       setThemeState(newTheme);
     }
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    theme,
+    toggleTheme,
+    setTheme,
+    isDark: theme === 'dark'
+  }), [theme, toggleTheme, setTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, isDark: theme === 'dark' }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

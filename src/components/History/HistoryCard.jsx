@@ -126,7 +126,7 @@ export default function HistoryCard({
             </span>
           ) : (
             <span className="history-badge-type-prompt" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <Icons.Sparkles />
+              <Icons.Film />
               <span>{item.style || 'Prompt to Video'}</span>
             </span>
           )}
@@ -167,7 +167,7 @@ export default function HistoryCard({
             {isImage ? (
               <><Icons.Image /> {t('imageToVideo', 'Image to Video')}</>
             ) : (
-              <><Icons.Sparkles /> {t('promptToVideo', 'Prompt to Video')}</>
+              <><Icons.Film /> {t('promptToVideo', 'Prompt to Video')}</>
             )}
           </span>
         </div>
@@ -203,7 +203,7 @@ export default function HistoryCard({
         {/* For Prompt to Video or motion prompt: Display typed prompt prominently */}
         <div className="history-card-prompt-container">
           <span className="history-prompt-mini-label">
-            {isImage ? <Icons.Image /> : <Icons.Sparkles />}
+            {isImage ? <Icons.Image /> : <Icons.Film />}
             <span>{isImage ? t('step1PromptLabel', 'Motion Description') : t('typedPrompt', 'Typed Prompt')}</span>
           </span>
           <p className="history-card-prompt-quote" title={item.prompt}>

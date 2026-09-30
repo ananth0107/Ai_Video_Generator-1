@@ -28,13 +28,13 @@ export default function CreatorMarketplaceSection({ onSelectPrompt, onOpenSellMo
     if (onSelectPrompt) {
       onSelectPrompt(item.prompt);
     }
-    showToast(`Loaded template: "${item.title}"`, 'Sparkles');
+    showToast(`Loaded template: "${item.title}"`, 'Check');
     // Smooth scroll back up to prompt box
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLicenseItem = (item) => {
-    showToast(`Licensed "${item.title}" for ${item.credits} AI Credits!`, 'Sparkles');
+    showToast(`Licensed "${item.title}" for ${item.credits} AI Credits!`, 'Check');
   };
 
   return (
@@ -195,7 +195,7 @@ export default function CreatorMarketplaceSection({ onSelectPrompt, onOpenSellMo
                   className="card-use-btn"
                   onClick={() => handleUsePrompt(item)}
                 >
-                  <Icons.Sparkles />
+                  <Icons.Film />
                   <span>Use Template</span>
                 </button>
                 <button

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { defaultCharacters } from '../data/defaultCharacters';
 import { useToast } from './ToastContext';
 
@@ -56,7 +56,7 @@ export function CharacterProvider({ children }) {
     return allCharacters.filter((c) => selectedCharacterIds.includes(c.id));
   }, [allCharacters, selectedCharacterIds]);
 
-  const toggleSelectCharacter = (id) => {
+  const toggleSelectCharacter = useCallback((id) => {
     setSelectedCharacterIds((prev) => {
       const exists = prev.includes(id);
       if (exists) {
@@ -65,25 +65,25 @@ export function CharacterProvider({ children }) {
         return [...prev, id];
       }
     });
-  };
+  }, []);
 
-  const selectCharacter = (id) => {
+  const selectCharacter = useCallback((id) => {
     setSelectedCharacterIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
+  }, []);
 
-  const removeSelectedCharacter = (id) => {
+  const removeSelectedCharacter = useCallback((id) => {
     setSelectedCharacterIds((prev) => prev.filter((item) => item !== id));
-  };
+  }, []);
 
-  const clearSelectedCharacters = () => {
+  const clearSelectedCharacters = useCallback(() => {
     setSelectedCharacterIds([]);
-  };
+  }, []);
 
-  const isCharacterSelected = (id) => {
+  const isCharacterSelected = useCallback((id) => {
     return selectedCharacterIds.includes(id);
-  };
+  }, [selectedCharacterIds]);
 
-  const addCharacter = (characterData) => {
+  const addCharacter = useCallback((characterData) => {
     const newId = `custom-${Date.now()}`;
     const newCharacter = {
       ...characterData,
@@ -98,46 +98,60 @@ export function CharacterProvider({ children }) {
     setCustomCharacters((prev) => [newCharacter, ...prev]);
     // Auto-select newly created character
     setSelectedCharacterIds((prev) => [...prev, newId]);
-    showToast(`✨ Character "${newCharacter.name}" created and added!`, 'Sparkles');
+    showToast(`Character "${newCharacter.name}" created and added!`, 'Check');
     return newCharacter;
-  };
+  }, [showToast]);
 
-  const updateCharacter = (id, updatedData) => {
+  const updateCharacter = useCallback((id, updatedData) => {
     setCustomCharacters((prev) =>
       prev.map((char) => (char.id === id ? { ...char, ...updatedData, updatedAt: new Date().toISOString() } : char))
     );
     showToast(`Character updated successfully!`, 'Check');
-  };
+  }, [showToast]);
 
-  const deleteCharacter = (id) => {
+  const deleteCharacter = useCallback((id) => {
     setCustomCharacters((prev) => prev.filter((char) => char.id !== id));
     setSelectedCharacterIds((prev) => prev.filter((item) => item !== id));
     showToast('Character removed from library', 'Trash2');
-  };
+  }, [showToast]);
 
-  const getCharacterById = (id) => {
+  const getCharacterById = useCallback((id) => {
     return allCharacters.find((c) => c.id === id) || defaultCharacters[0];
-  };
+  }, [allCharacters]);
+
+  const value = useMemo(() => ({
+    defaultCharacters,
+    customCharacters,
+    allCharacters,
+    selectedCharacterIds,
+    selectedCharacters,
+    toggleSelectCharacter,
+    selectCharacter,
+    removeSelectedCharacter,
+    clearSelectedCharacters,
+    isCharacterSelected,
+    addCharacter,
+    updateCharacter,
+    deleteCharacter,
+    getCharacterById
+  }), [
+    customCharacters,
+    allCharacters,
+    selectedCharacterIds,
+    selectedCharacters,
+    toggleSelectCharacter,
+    selectCharacter,
+    removeSelectedCharacter,
+    clearSelectedCharacters,
+    isCharacterSelected,
+    addCharacter,
+    updateCharacter,
+    deleteCharacter,
+    getCharacterById
+  ]);
 
   return (
-    <CharacterContext.Provider
-      value={{
-        defaultCharacters,
-        customCharacters,
-        allCharacters,
-        selectedCharacterIds,
-        selectedCharacters,
-        toggleSelectCharacter,
-        selectCharacter,
-        removeSelectedCharacter,
-        clearSelectedCharacters,
-        isCharacterSelected,
-        addCharacter,
-        updateCharacter,
-        deleteCharacter,
-        getCharacterById
-      }}
-    >
+    <CharacterContext.Provider value={value}>
       {children}
     </CharacterContext.Provider>
   );

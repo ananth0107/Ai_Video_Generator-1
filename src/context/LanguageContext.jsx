@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const LanguageContext = createContext();
 
@@ -20,6 +20,7 @@ export const translations = {
 
     // THAMILI AI Video Hub
     videoHubTitle: 'AI VIDEO',
+    createVideoTagline: 'Create video with Thamili AI',
     videoHubSubtitle: 'Create stunning videos with the power of AI.',
     videoHubSupporting: 'Transform your ideas and images into cinematic AI videos with THAMILI.',
     p2vCardHubTitle: 'Prompt to Video',
@@ -40,6 +41,7 @@ export const translations = {
 
     // Sidebar
     aiVideo: 'AI VIDEO',
+    newChat: 'New Chat',
     promptToVideo: 'Prompt to Video',
     imageToVideo: 'Image to Video',
     characters: 'Characters',
@@ -154,7 +156,7 @@ export const translations = {
 
     // Characters Page
     charactersPageTitle: 'AI Characters Studio',
-    charactersPageSubtitle: 'Explore our master library of Tamil superstar actors and actresses. Select characters to integrate into your Prompt to Video and Image to Video creations.',
+    charactersPageSubtitle: 'Build and reuse consistent professional characters for AI video generation. Select characters to integrate into your Prompt to Video and Image to Video creations.',
     characterCountBadge: 'Characters Library',
     createNewCharacter: 'Create New Character',
     searchCharactersPagePlaceholder: 'Search characters by name, role, or style...',
@@ -257,7 +259,7 @@ export const translations = {
     ],
 
     motionChips: [
-      '✨ Smooth Forward Dolly',
+      '🎥 Smooth Forward Dolly',
       '🌊 Fluid Atmospheric Motion',
       '⚡ Neon Particle Sweep',
       '🍃 Gentle Breeze Drift',
@@ -280,6 +282,7 @@ export const translations = {
 
     // THAMILI AI Video Hub
     videoHubTitle: 'AI VIDEO',
+    createVideoTagline: 'தமிழி AI உடன் வீடியோக்களை உருவாக்குங்கள்',
     videoHubSubtitle: 'AI இன் ஆற்றலால் அற்புதமான வீடியோக்களை உருவாக்குங்கள்.',
     videoHubSupporting: 'உங்கள் யோசனைகளையும் படங்களையும் THAMILI மூலம் சினிமாட்டிக் AI வீடியோக்களாக மாற்றவும்.',
     p2vCardHubTitle: 'பிராம்ட் டூ வீடியோ (Prompt to Video)',
@@ -300,6 +303,7 @@ export const translations = {
 
     // Sidebar
     aiVideo: 'AI VIDEO',
+    newChat: 'புதிய உரையாடல் (New Chat)',
     promptToVideo: 'பிராம்ட் டூ வீடியோ',
     imageToVideo: 'படத்திலிருந்து வீடியோ',
     characters: 'கதாபாத்திரங்கள்',
@@ -414,7 +418,7 @@ export const translations = {
 
     // Characters Page
     charactersPageTitle: 'AI கதாபாத்திரங்கள் ஸ்டுடியோ',
-    charactersPageSubtitle: 'எங்கள் தமிழ் திரையுலக முன்னணி நடிகர்கள் மற்றும் நடிகைகளின் நூலகத்தை ஆராயுங்கள். உங்கள் பிராம்ட் டூ வீடியோ மற்றும் இமேஜ் டூ வீடியோ உருவாக்கங்களில் இவர்களை எளிதாக இணையுங்கள்.',
+    charactersPageSubtitle: 'வீடியோ உருவாக்கங்களுக்கான தொழில்முறை AI கதாபாத்திரங்கள் நூலகம். உங்கள் பிராம்ட் டூ வீடியோ மற்றும் இமேஜ் டூ வீடியோ உருவாக்கங்களில் இவர்களை எளிதாக இணையுங்கள்.',
     characterCountBadge: 'கதாபாத்திரங்கள் நூலகம்',
     createNewCharacter: 'புதிய கதாபாத்திரத்தை உருவாக்கு',
     searchCharactersPagePlaceholder: 'பெயர், பாத்திரம் அல்லது பாணி மூலம் கதாபாத்திரங்களைத் தேடுங்கள்...',
@@ -517,7 +521,7 @@ export const translations = {
     ],
 
     motionChips: [
-      '✨ மென்மையான முன்னோக்கி ஜூம்',
+      '🎥 மென்மையான முன்னோக்கி ஜூம்',
       '🌊 திரவ சூழல் இயக்கம்',
       '⚡ நியான் துகள் வீச்சு',
       '🍃 மென்மையான தென்றல் அசைவு',
@@ -535,7 +539,7 @@ export function LanguageProvider({ children }) {
     }
   });
 
-  const setLanguage = (lang) => {
+  const setLanguage = useCallback((lang) => {
     if (lang === 'en' || lang === 'ta') {
       setLanguageState(lang);
       try {
@@ -544,19 +548,27 @@ export function LanguageProvider({ children }) {
         console.error('Failed to save language preference:', err);
       }
     }
-  };
+  }, []);
 
-  const t = (key, fallback = '') => {
+  const t = useCallback((key, fallback = '') => {
     const currentDict = translations[language] || translations.en;
     if (currentDict && currentDict[key] !== undefined) {
       return currentDict[key];
     }
     const fallbackDict = translations.en;
     return fallbackDict[key] !== undefined ? fallbackDict[key] : fallback || key;
-  };
+  }, [language]);
+
+  const value = useMemo(() => ({
+    language,
+    lang: language,
+    setLanguage,
+    setLang: setLanguage,
+    t
+  }), [language, setLanguage, t]);
 
   return (
-    <LanguageContext.Provider value={{ language, lang: language, setLanguage, setLang: setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

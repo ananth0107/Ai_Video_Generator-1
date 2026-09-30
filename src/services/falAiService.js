@@ -25,7 +25,6 @@ export async function testBackendConnection() {
     };
   }
 }
-export const testPixazoConnection = testBackendConnection;
 export const testFalConnection = testBackendConnection;
 
 /**
@@ -211,7 +210,7 @@ export async function generateTextToVideo(prompt, options = {}) {
 }
 
 /**
- * Generate Real AI Video from Image using Pixazo LTX Image-to-Video API via backend proxy
+ * Generate Real AI Video from Image via backend proxy
  *
  * @param {string|Blob} imageInput Image DataURL, URL, or base64
  * @param {string} prompt Motion description prompt
@@ -334,8 +333,6 @@ export async function generateTextToImage(prompt) {
   }
 }
 
-// Backward-compatibility and Pixazo aliases
+// Backward-compatibility aliases
 export const testFalKey = testFalConnection;
 export const testToken = testFalConnection;
-export const generatePixazoTextToVideo = generateTextToVideo;
-export const generatePixazoImageToVideo = generateImageToVideo;

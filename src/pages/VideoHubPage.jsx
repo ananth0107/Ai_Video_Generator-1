@@ -15,12 +15,11 @@ export default function VideoHubPage() {
           <div className="hub-title-row">
             <h1 className="hub-main-title">THAMILI AI Video Studio</h1>
             <span className="studio-version-badge">
-              <Icons.Sparkles />
               <span>Studio v2.5 Ultra</span>
             </span>
           </div>
           <div className="hub-stats-row">
-            <span className="hub-stat-item">✨ 4K HDR Diffusion</span>
+            <span className="hub-stat-item">4K HDR Diffusion</span>
             <span className="hub-stat-sep">•</span>
             <span className="hub-stat-item">⚡ 60 FPS Keyframes</span>
             <span className="hub-stat-sep">•</span>
@@ -36,7 +35,7 @@ export default function VideoHubPage() {
       <div className="hub-feature-cards-grid">
         {/* Card 1: Prompt to Video */}
         <div
-          onClick={() => navigate('/prompt-to-video')}
+          onClick={() => navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
           className="feature-card prompt-card"
           role="button"
           tabIndex={0}
@@ -44,7 +43,7 @@ export default function VideoHubPage() {
           <div className="feature-card-inner-top">
             <div className="feature-card-header">
               <div className="feature-icon-circle icon-blue">
-                <Icons.Sparkles />
+                <Icons.Film />
               </div>
               <div className="feature-header-text">
                 <div className="feature-title-row">
@@ -77,7 +76,7 @@ export default function VideoHubPage() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              navigate('/prompt-to-video');
+              navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
             }}
             className="feature-action-btn btn-blue-purple"
           >
@@ -88,7 +87,7 @@ export default function VideoHubPage() {
 
         {/* Card 2: Image to Video */}
         <div
-          onClick={() => navigate('/image-to-video')}
+          onClick={() => navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
           className="feature-card image-card"
           role="button"
           tabIndex={0}
@@ -129,7 +128,7 @@ export default function VideoHubPage() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              navigate('/image-to-video');
+              navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
             }}
             className="feature-action-btn btn-purple-pink"
           >

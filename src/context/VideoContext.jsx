@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const VideoContext = createContext();
 
@@ -7,7 +7,7 @@ export function VideoProvider({ children }) {
   const [currentVideo, setCurrentVideo] = useState(null);
   const [videoHistory, setVideoHistory] = useState([]);
 
-  const setGeneratedVideo = (videoData) => {
+  const setGeneratedVideo = useCallback((videoData) => {
     const videoWithMeta = {
       ...videoData,
       id: `vid_${Date.now()}`,
@@ -16,13 +16,13 @@ export function VideoProvider({ children }) {
     };
     setCurrentVideo(videoWithMeta);
     setVideoHistory((prev) => [videoWithMeta, ...prev]);
-  };
+  }, []);
 
-  const clearCurrentVideo = () => {
+  const clearCurrentVideo = useCallback(() => {
     setCurrentVideo(null);
-  };
+  }, []);
 
-  const toggleSaveVideo = (videoId) => {
+  const toggleSaveVideo = useCallback((videoId) => {
     if (currentVideo && (currentVideo.id === videoId || !videoId)) {
       setCurrentVideo((prev) => ({
         ...prev,
@@ -32,18 +32,18 @@ export function VideoProvider({ children }) {
     setVideoHistory((prev) =>
       prev.map((v) => (v.id === videoId ? { ...v, isSaved: !v.isSaved } : v))
     );
-  };
+  }, [currentVideo]);
+
+  const value = useMemo(() => ({
+    currentVideo,
+    videoHistory,
+    setGeneratedVideo,
+    clearCurrentVideo,
+    toggleSaveVideo
+  }), [currentVideo, videoHistory, setGeneratedVideo, clearCurrentVideo, toggleSaveVideo]);
 
   return (
-    <VideoContext.Provider
-      value={{
-        currentVideo,
-        videoHistory,
-        setGeneratedVideo,
-        clearCurrentVideo,
-        toggleSaveVideo
-      }}
-    >
+    <VideoContext.Provider value={value}>
       {children}
     </VideoContext.Provider>
   );

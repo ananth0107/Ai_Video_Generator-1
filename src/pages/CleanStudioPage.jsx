@@ -70,12 +70,12 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
   const handleSelectReference = (card) => {
     if (card.isActionCard) {
       onSelectView('marketplace');
-      showToast('Opened Creator Marketplace styles & templates', 'Sparkles');
+      showToast('Opened Creator Marketplace styles & templates', 'Check');
       return;
     }
 
     setPromptText(card.prompt);
-    showToast(`Loaded "${card.title}" prompt!`, 'Sparkles');
+    showToast(`Loaded "${card.title}" prompt!`, 'Check');
     if (promptInputRef.current) {
       promptInputRef.current.focus();
     }
@@ -106,13 +106,13 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
   const handleGenerate = (e) => {
     if (e) e.preventDefault();
     if (!promptText.trim()) {
-      showToast('Please enter a description for your image', 'Sparkles');
+      showToast('Please enter a description for your image', 'Check');
       return;
     }
 
     setIsGenerating(true);
     setGenerationProgress(10);
-    showToast(`Generating with ${selectedModel} Diffusion Engine...`, 'Sparkles');
+    showToast(`Generating with ${selectedModel} Diffusion Engine...`, 'Check');
 
     const interval = setInterval(() => {
       setGenerationProgress((prev) => {
@@ -141,7 +141,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
 
       setGeneratedVideo(newCreation);
       setGalleryCreations((prev) => [newCreation, ...prev]);
-      showToast('✨ Masterpiece generated in 4K HDR!', 'Sparkles');
+      showToast('Masterpiece generated in 4K HDR!', 'Check');
 
       const previewEl = document.getElementById('generation-output-section');
       if (previewEl) previewEl.scrollIntoView({ behavior: 'smooth' });
@@ -255,7 +255,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                           onClick={() => handleSelectModel('Ultra 4K')}
                         >
                           <div className="option-title-row">
-                            <strong>✨ Ultra 4K</strong>
+                            <strong>Ultra 4K</strong>
                             <span className="option-speed-badge">SDXL + Flux</span>
                           </div>
                           <p className="option-desc">Hyper-detailed textures & lighting</p>
@@ -277,7 +277,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                       </>
                     ) : (
                       <>
-                        <Icons.Sparkles />
+                        <Icons.Zap />
                         <span>Generate</span>
                       </>
                     )}
@@ -347,7 +347,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
         <section className="generation-output-showcase" id="generation-output-section">
           <div className="output-header-bar">
             <div className="output-title-group">
-              <span className="output-badge-ready">✨ Generated 4K Output</span>
+              <span className="output-badge-ready">Generated 4K Output</span>
               <h2 className="output-prompt-title">"{currentVideo.prompt}"</h2>
             </div>
             <div className="output-actions-group">
@@ -358,7 +358,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                   setPromptText(currentVideo.prompt);
                   onSelectView('images');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
-                  showToast('Prompt loaded for remixing!', 'Sparkles');
+                  showToast('Prompt loaded for remixing!', 'Check');
                 }}
               >
                 <Icons.RefreshCw />
@@ -396,7 +396,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
               {/* Floating Status Badges */}
               <div className="player-top-hud">
                 <div className="hud-badge hud-model">
-                  <Icons.Sparkles />
+                  <Icons.Film />
                   <span>{currentVideo.model || 'Thamili Neural Diffusion'}</span>
                 </div>
                 <div className="hud-badge hud-res">4K UHD • 60 FPS</div>
@@ -521,7 +521,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                         onClick={() => {
                           setPromptText(item.prompt);
                           setIsGalleryOpen(false);
-                          showToast('Loaded prompt from gallery!', 'Sparkles');
+                          showToast('Loaded prompt from gallery!', 'Check');
                         }}
                       >
                         Use Prompt
@@ -542,7 +542,6 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
           <div className="clean-modal-box pro-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-top-bar">
               <div className="modal-title-row">
-                <span className="sparkle-gold">✨</span>
                 <h3>Upgrade to Thamili Pro</h3>
               </div>
               <button
@@ -572,7 +571,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                     type="button"
                     className="pricing-choose-btn"
                     onClick={() => {
-                      showToast('Subscribed to Creator Starter!', 'Sparkles');
+                      showToast('Subscribed to Creator Starter!', 'Check');
                       setIsUpgradeModalOpen(false);
                     }}
                   >
@@ -594,7 +593,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                     type="button"
                     className="pricing-choose-btn gradient-btn"
                     onClick={() => {
-                      showToast('Welcome to Thamili Studio Pro Ultra!', 'Sparkles');
+                      showToast('Welcome to Thamili Studio Pro Ultra!', 'Check');
                       setIsUpgradeModalOpen(false);
                     }}
                   >
@@ -628,7 +627,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                showToast('Artwork submitted for verification! Creators earn 80% royalty.', 'Sparkles');
+                showToast('Artwork submitted for verification! Creators earn 80% royalty.', 'Check');
                 setIsSellModalOpen(false);
               }}
               className="sell-artwork-form"
@@ -715,7 +714,7 @@ export default function CleanStudioPage({ activeView = 'images', onSelectView = 
                       type="button"
                       className="pack-buy-btn"
                       onClick={() => {
-                        showToast(`Added ${pack.amount} credits to your account!`, 'Sparkles');
+                        showToast(`Added ${pack.amount} credits to your account!`, 'Check');
                         setIsCreditsModalOpen(false);
                       }}
                     >

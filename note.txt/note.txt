@@ -1,0 +1,35 @@
+DESCRIPTION:
+
+THAMILI AI is an AI-powered Video and Multimedia Generation Studio that combines 
+Tamil cultural aesthetics with futuristic cyberpunk design. The platform is 
+designed for creators, directors, writers, and artists to generate, manage,
+ and explore AI-powered multimedia content.
+
+The website provides Prompt-to-Video Generation, Image-to-Video Animation,
+ Character Consistency, AI Prompt Enhancement, AI Image Generation, AI Chat,
+ Video History, Custom Video Playback, Tamil/English language support, 
+and token/credit management.
+
+The application follows a hybrid full-stack architecture, consisting of a
+ Vite + React frontend, an Express + Node.js backend, and external AI 
+services such as Google Gemini/Veo and OpenRouter.
+
+
+DEVELOPERS:
+
+FRONTEND - Ananth
+BACKEND, API -Jabakingson
+
+API :
+
+API KEYS - gemini api, openrouter api
+
+Api location:
+
+Project Root/
+└── .env
+
+Running commands :
+
+backend  : npm run server:dev
+frontend : npm run dev

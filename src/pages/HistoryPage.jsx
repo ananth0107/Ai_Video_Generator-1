@@ -122,7 +122,7 @@ export default function HistoryPage() {
           <div className="heading-row">
             <button
               type="button"
-              onClick={() => navigate('/prompt-to-video')}
+              onClick={() => navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
               className="icon-btn"
               title="Back to Studio"
             >
@@ -146,11 +146,11 @@ export default function HistoryPage() {
           <div className="heading-actions-right">
             <button
               type="button"
-              onClick={() => navigate('/prompt-to-video')}
+              onClick={() => navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
               className="generate-btn"
               style={{ width: 'auto', padding: '9px 18px', fontSize: '13px' }}
             >
-              <Icons.Sparkles />
+              <Icons.Film />
               <span>{t('promptToVideo', 'Prompt to Video')}</span>
             </button>
           </div>
@@ -177,7 +177,7 @@ export default function HistoryPage() {
               className={`history-filter-tab ${currentFilter === 'prompt' ? 'active' : ''}`}
               onClick={() => handleFilterChange('prompt')}
             >
-              <Icons.Sparkles />
+              <Icons.Film />
               <span>{t('promptHistory', 'Prompt to Video')}</span>
               <span className="history-filter-count-badge">{promptCount}</span>
             </button>
@@ -253,7 +253,7 @@ export default function HistoryPage() {
             className="generate-btn"
             style={{ width: 'auto', padding: '12px 28px', fontSize: '14px', marginTop: '12px' }}
           >
-            <Icons.Sparkles />
+            <Icons.Film />
             <span>{t('createFirstVideo', 'Create Your First Video')}</span>
           </button>
         </div>
@@ -262,7 +262,7 @@ export default function HistoryPage() {
         <div className="history-empty-state-box" style={{ padding: '40px 20px' }}>
           <div className="history-empty-icon-wrap">
             <div className="history-empty-icon-ring" style={{ background: '#f8fafc', color: '#94a3b8' }}>
-              {searchQuery ? <Icons.Search /> : currentFilter === 'image' ? <Icons.Image /> : <Icons.Sparkles />}
+              {searchQuery ? <Icons.Search /> : currentFilter === 'image' ? <Icons.Image /> : <Icons.Film />}
             </div>
           </div>
           <h3 className="history-empty-title" style={{ fontSize: '18px' }}>
@@ -297,7 +297,7 @@ export default function HistoryPage() {
           ) : currentFilter === 'image' ? (
             <button
               type="button"
-              onClick={() => navigate('/image-to-video')}
+              onClick={() => navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
               className="generate-btn"
               style={{ width: 'auto', padding: '10px 22px', fontSize: '13px', marginTop: '14px' }}
             >
@@ -307,11 +307,11 @@ export default function HistoryPage() {
           ) : (
             <button
               type="button"
-              onClick={() => navigate('/prompt-to-video')}
+              onClick={() => navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } })}
               className="generate-btn"
               style={{ width: 'auto', padding: '10px 22px', fontSize: '13px', marginTop: '14px' }}
             >
-              <Icons.Sparkles />
+              <Icons.Film />
               <span>{t('promptToVideo', 'Prompt to Video')}</span>
             </button>
           )}

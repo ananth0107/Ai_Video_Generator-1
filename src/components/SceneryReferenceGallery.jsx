@@ -25,7 +25,6 @@ export default function SceneryReferenceGallery({
           </div>
         </div>
         <div className="scenery-header-badge">
-          <Icons.Sparkles />
           <span>Click any scene to use as reference</span>
         </div>
       </div>

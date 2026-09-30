@@ -78,7 +78,7 @@ export function useVideoTimeline(duration = 10) {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" className="get-started-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icons.Sparkles />
+              <Icons.Code />
               <span>Generate Code</span>
             </button>
           </div>

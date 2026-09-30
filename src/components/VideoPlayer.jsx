@@ -239,14 +239,26 @@ export default function VideoPlayer({
         const promptLower = (video.prompt || '').toLowerCase();
         let activeCharacter = (video.characters && video.characters.length > 0) ? video.characters[0] : null;
         if (!activeCharacter) {
-          if (promptLower.includes('trisha')) {
-            activeCharacter = { id: 'trisha-krishnan', name: 'Trisha Krishnan', gender: 'Actress', style: 'Cinematic' };
-          } else if (promptLower.includes('rajini')) {
-            activeCharacter = { id: 'rajinikanth', name: 'Rajinikanth', gender: 'Actor', style: 'Cinematic' };
-          } else if (promptLower.includes('vijay')) {
-            activeCharacter = { id: 'vijay', name: 'Vijay', gender: 'Actor', style: 'Cinematic' };
-          } else if (promptLower.includes('nayanthara')) {
-            activeCharacter = { id: 'nayanthara', name: 'Nayanthara', gender: 'Actress', style: 'Cinematic' };
+          if (promptLower.includes('alex') || promptLower.includes('vance') || promptLower.includes('executive')) {
+            activeCharacter = { id: 'alex-vance', name: 'Alex Vance', role: 'Executive Leader', style: 'Realistic' };
+          } else if (promptLower.includes('marcus') || promptLower.includes('chen') || promptLower.includes('architect')) {
+            activeCharacter = { id: 'marcus-chen', name: 'Marcus Chen', role: 'AI Architect', style: 'Cinematic' };
+          } else if (promptLower.includes('sophia') || promptLower.includes('reyes') || promptLower.includes('anchor')) {
+            activeCharacter = { id: 'sophia-reyes', name: 'Sophia Reyes', role: 'News Anchor', style: 'Realistic' };
+          } else if (promptLower.includes('kaelen') || promptLower.includes('mercer') || promptLower.includes('detective')) {
+            activeCharacter = { id: 'kaelen-mercer', name: 'Kaelen Mercer', role: 'Cyber Detective', style: 'Cyberpunk' };
+          } else if (promptLower.includes('amara') || promptLower.includes('brooks') || promptLower.includes('commander')) {
+            activeCharacter = { id: 'commander-amara', name: 'Amara Brooks', role: 'Mission Commander', style: 'Cinematic' };
+          } else if (promptLower.includes('julian') || promptLower.includes('laurent') || promptLower.includes('designer')) {
+            activeCharacter = { id: 'julian-laurent', name: 'Julian Laurent', role: 'Creative Director', style: 'Cinematic' };
+          } else if (promptLower.includes('maya') || promptLower.includes('lin') || promptLower.includes('wellness')) {
+            activeCharacter = { id: 'maya-lin', name: 'Maya Lin', role: 'Mindfulness Host', style: 'Realistic' };
+          } else if (promptLower.includes('leo') || promptLower.includes('sterling') || promptLower.includes('explorer')) {
+            activeCharacter = { id: 'leo-sterling', name: 'Leo Sterling', role: 'Expedition Filmmaker', style: 'Realistic' };
+          } else if (promptLower.includes('elena') || promptLower.includes('rostova') || promptLower.includes('geneticist') || promptLower.includes('scientist')) {
+            activeCharacter = { id: 'dr-elena-rostova', name: 'Dr. Elena Rostova', role: 'Biotech Pioneer', style: 'Realistic' };
+          } else if (promptLower.includes('tariq') || promptLower.includes('mansour') || promptLower.includes('parkour') || promptLower.includes('stunt')) {
+            activeCharacter = { id: 'tariq-mansour', name: 'Tariq Mansour', role: 'Movement Specialist', style: 'Cinematic' };
           }
         }
 

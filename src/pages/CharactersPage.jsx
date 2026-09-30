@@ -5,67 +5,67 @@ import { useCharacters } from '../context/CharacterContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 
-// Archetypes directly based on Reference Screenshot 1
+// Archetypes directly based on Google Flow Professional Characters
 const SAMPLE_ARCHETYPES = [
-  {
-    id: 'the-eccentric',
-    name: 'The Eccentric',
-    desc: 'Unforgettable quirky humans. Magnetic scene-stealers with offbeat charm.',
-    role: 'Quirky Scene-Stealer',
-    category: 'Actor',
-    style: 'Cinematic',
-    prompt: 'The Eccentric, an unforgettable quirky human with whimsical styling, magnetic offbeat charm, expressive cinematic lighting, 4K render.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="ecc-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%237c2d12"/><stop offset="50%" stop-color="%23ea580c"/><stop offset="100%" stop-color="%23f97316"/></linearGradient><linearGradient id="pink-collar" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23f472b6"/><stop offset="100%" stop-color="%23ec4899"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23ecc-bg)"/><circle cx="100" cy="85" r="42" fill="%23fed7aa"/><path d="M 45 70 Q 100 20 155 70 Q 160 40 135 30 Q 100 20 65 30 Q 40 40 45 70 Z" fill="%23c2410c"/><circle cx="50" cy="65" r="16" fill="%23ea580c"/><circle cx="150" cy="65" r="16" fill="%23ea580c"/><circle cx="85" cy="82" r="4" fill="%230f172a"/><circle cx="115" cy="82" r="4" fill="%230f172a"/><path d="M 90 102 Q 100 112 110 102" stroke="%23c2410c" stroke-width="3" fill="none"/><rect x="50" y="130" width="100" height="40" rx="20" fill="url(%23pink-collar)"/><rect x="65" y="138" width="70" height="24" rx="12" fill="%23db2777"/></svg>'
-  },
   {
     id: 'the-professional',
     name: 'The Professional',
-    desc: 'Clean cut, well spoken, competent',
-    role: 'Competent Specialist',
-    category: 'Actor',
+    desc: 'Clean cut, well spoken, commanding executive presence',
+    role: 'Global Keynote Speaker & Executive',
+    category: 'Executive',
     style: 'Realistic',
-    prompt: 'The Professional, clean cut, well spoken, competent modern specialist in crisp attire, sharp studio portrait lighting, 4K photorealistic.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="pro-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e293b"/><stop offset="100%" stop-color="%23475569"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23pro-bg)"/><circle cx="100" cy="82" r="42" fill="%23a16207"/><path d="M 60 70 Q 100 35 140 70 L 138 90 Q 100 50 62 90 Z" fill="%230f172a"/><circle cx="86" cy="80" r="4" fill="%230f172a"/><circle cx="114" cy="80" r="4" fill="%230f172a"/><path d="M 92 100 Q 100 106 108 100" stroke="%23451a03" stroke-width="2.5" fill="none"/><path d="M 50 145 Q 100 125 150 145 L 160 200 L 40 200 Z" fill="%23f8fafc"/><path d="M 85 140 L 100 165 L 115 140 Z" fill="%230f172a"/></svg>'
+    prompt: 'The Professional, an articulate global executive leader in a tailored slim-cut navy blazer, presenting in a sunlit architectural glass boardroom, 8K photorealistic studio lighting.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="pro-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23091326"/><stop offset="100%" stop-color="%232563eb"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23pro-bg)"/><circle cx="100" cy="82" r="38" fill="%23fcd5b8"/><path d="M 60 70 Q 100 35 140 70 L 138 90 Q 100 50 62 90 Z" fill="%230f172a"/><circle cx="86" cy="80" r="4" fill="%230f172a"/><circle cx="114" cy="80" r="4" fill="%230f172a"/><path d="M 92 100 Q 100 106 108 100" stroke="%23b45309" stroke-width="2.5" fill="none"/><path d="M 50 145 Q 100 125 150 145 L 160 200 L 40 200 Z" fill="%230f172a"/><polygon points="88,140 112,140 100,170" fill="%23ffffff"/><polygon points="96,145 104,145 102,185 98,185" fill="%232563eb"/></svg>'
   },
   {
-    id: 'the-wildcard',
-    name: 'The Wildcard',
-    desc: 'Beyond human, anything can be a character, right?',
-    role: 'Abstract Entity / Robot',
-    category: 'Custom',
-    style: '3D',
-    prompt: 'The Wildcard, a geometric faceted crystalline entity with glowing internal refraction and iridescent light dispersion, 4K digital art.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="wild-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233b0764"/><stop offset="50%" stop-color="%236b21a8"/><stop offset="100%" stop-color="%23c084fc"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23wild-bg)"/><polygon points="100,40 135,70 120,115 80,115 65,70" fill="%23d8b4fe" stroke="%239333ea" stroke-width="3"/><polygon points="100,40 120,75 100,105 80,75" fill="%23f3e8ff"/><circle cx="85" cy="75" r="5" fill="%236b21a8"/><circle cx="115" cy="75" r="5" fill="%236b21a8"/><path d="M 55 135 Q 100 115 145 135 L 160 200 L 40 200 Z" fill="%237e22ce" stroke="%23a855f7" stroke-width="2"/><circle cx="100" cy="155" r="12" fill="%23facc15"/></svg>'
-  },
-  {
-    id: 'the-familiar',
-    name: 'The Familiar',
-    desc: 'Grounded and authentic, a relatable anchor for your story',
-    role: 'Relatable Story Anchor',
-    category: 'Actor',
+    id: 'the-innovator',
+    name: 'The Innovator',
+    desc: 'AI architect & tech pioneer in sleek minimalist styling',
+    role: 'AI Research Pioneer',
+    category: 'Tech',
     style: 'Cinematic',
-    prompt: 'The Familiar, grounded and authentic character with rugged jacket, warm naturalistic sunset lighting, cinematic depth of field.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="fam-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2314532d"/><stop offset="100%" stop-color="%23166534"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23fam-bg)"/><circle cx="100" cy="85" r="42" fill="%23c28552"/><path d="M 60 70 Q 100 35 140 70 L 135 90 Q 100 55 65 90 Z" fill="%231c1917"/><circle cx="86" cy="82" r="4" fill="%231c1917"/><circle cx="114" cy="82" r="4" fill="%231c1917"/><path d="M 90 105 Q 100 110 110 105" stroke="%2344403c" stroke-width="2.5" fill="none"/><path d="M 50 145 Q 100 120 150 145 L 160 200 L 40 200 Z" fill="%233f6212"/><path d="M 85 140 L 100 170 L 115 140 Z" fill="%2327272a"/></svg>'
+    prompt: 'The Innovator, an AI systems architect in a minimalist black turtleneck with smart frames, analyzing glowing cyan holographic data in a glass lab, 4K HDR render.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="in-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23042f2e"/><stop offset="100%" stop-color="%2306b6d4"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23in-bg)"/><circle cx="100" cy="82" r="38" fill="%23fed7aa"/><path d="M 62 68 Q 100 35 138 68 L 135 85 Q 100 50 65 85 Z" fill="%2309090b"/><circle cx="86" cy="80" r="4" fill="%2309090b"/><circle cx="114" cy="80" r="4" fill="%2309090b"/><rect x="74" y="74" width="22" height="12" rx="3" fill="none" stroke="%2322d3ee" stroke-width="1.8"/><rect x="104" y="74" width="22" height="12" rx="3" fill="none" stroke="%2322d3ee" stroke-width="1.8"/><line x1="96" y1="79" x2="104" y2="79" stroke="%2322d3ee" stroke-width="1.8"/><path d="M 50 145 Q 100 125 150 145 L 160 200 L 40 200 Z" fill="%2318181b"/><rect x="85" y="130" width="30" height="20" rx="4" fill="%2327272a"/></svg>'
   },
   {
-    id: 'the-wicked',
-    name: 'The Wicked',
-    desc: 'Powerful antagonistic figures that command the screen',
-    role: 'Commanding Antagonist',
-    category: 'Actress',
-    style: 'Cinematic',
-    prompt: 'The Wicked, a powerful commanding antagonist with intense dark futuristic styling, dramatic rim lighting and atmospheric shadows, 4K.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="wick-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2309090b"/><stop offset="100%" stop-color="%2318181b"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23wick-bg)"/><circle cx="100" cy="85" r="40" fill="%23e2e8f0"/><path d="M 58 75 Q 100 40 142 75 L 140 115 Q 130 80 100 78 Q 70 80 60 115 Z" fill="%2309090b"/><line x1="62" y1="80" x2="68" y2="105" stroke="%23ffffff" stroke-width="3"/><circle cx="86" cy="82" r="4" fill="%2309090b"/><circle cx="114" cy="82" r="4" fill="%2309090b"/><path d="M 92 105 Q 100 108 108 105" stroke="%2309090b" stroke-width="2" fill="none"/><path d="M 50 145 Q 100 120 150 145 L 165 200 L 35 200 Z" fill="%2309090b" stroke="%23334155" stroke-width="1.5"/></svg>'
+    id: 'the-broadcaster',
+    name: 'The Broadcaster',
+    desc: 'Poised media anchor & international correspondent',
+    role: 'Broadcast News Anchor',
+    category: 'Host',
+    style: 'Realistic',
+    prompt: 'The Broadcaster, an international news anchor in a tailored ruby blazer speaking with composed authority in a 4K broadcast television studio with warm ring lighting.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="br-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23450a0a"/><stop offset="100%" stop-color="%23ef4444"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23br-bg)"/><circle cx="100" cy="82" r="38" fill="%23fcd5ce"/><path d="M 58 72 Q 100 30 142 72 L 145 130 Q 100 150 55 130 Z" fill="%2318181b"/><circle cx="86" cy="80" r="4" fill="%23450a0a"/><circle cx="114" cy="80" r="4" fill="%23450a0a"/><path d="M 90 100 Q 100 108 110 100" stroke="%23be123c" stroke-width="2.5" fill="none"/><path d="M 50 145 Q 100 120 150 145 L 160 200 L 40 200 Z" fill="%23dc2626"/><polygon points="88,140 112,140 100,165" fill="%23ffffff"/><circle cx="108" cy="148" r="2" fill="%2318181b"/></svg>'
   },
   {
-    id: 'the-fantastical',
-    name: 'The Fantastical',
-    desc: 'Ethereal, dreamlike beings fusing the human and the mythical',
-    role: 'Mythical Dream Being',
-    category: 'Actress',
+    id: 'the-investigator',
+    name: 'The Investigator',
+    desc: 'Neo-noir cybernetic detective with tactical intellect',
+    role: 'Cybernetics Detective',
+    category: 'Cinematic',
+    style: 'Cyberpunk',
+    prompt: 'The Investigator, a cybernetic detective in a dark trenchcoat with violet fiber-optics walking in a rainy neon-lit futuristic city, 4K HDR cinematic render.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="inv-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e1b4b"/><stop offset="100%" stop-color="%23a855f7"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23inv-bg)"/><circle cx="100" cy="82" r="38" fill="%23fed7aa"/><path d="M 60 68 Q 100 32 140 68 L 135 85 Q 100 50 65 85 Z" fill="%230f172a"/><circle cx="86" cy="80" r="4" fill="%23c084fc"/><circle cx="114" cy="80" r="4" fill="%23c084fc"/><path d="M 50 145 Q 100 120 150 145 L 160 200 L 40 200 Z" fill="%230f0a1e"/><path d="M 80 130 L 100 155 L 120 130" stroke="%23c084fc" stroke-width="2" fill="none"/></svg>'
+  },
+  {
+    id: 'the-visionary',
+    name: 'The Visionary',
+    desc: 'High-fashion aesthetic director & avant-garde creator',
+    role: 'Haute Couture Creative Director',
+    category: 'Creative',
     style: 'Cinematic',
-    prompt: 'The Fantastical, an ethereal dreamlike mythical being with luminous crystalline collar, soft radiant glow and heavenly mist, 4K render.',
-    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="fan-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%230e7490"/><stop offset="50%" stop-color="%2306b6d4"/><stop offset="100%" stop-color="%2367e8f9"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23fan-bg)"/><circle cx="100" cy="85" r="42" fill="%23f8fafc"/><path d="M 58 75 Q 100 35 142 75 L 140 105 Q 100 65 60 105 Z" fill="%23cbd5e1"/><circle cx="86" cy="82" r="4" fill="%230284c7"/><circle cx="114" cy="82" r="4" fill="%230284c7"/><path d="M 92 105 Q 100 110 108 105" stroke="%2338bdf8" stroke-width="2" fill="none"/><path d="M 50 145 Q 100 115 150 145 L 160 200 L 40 200 Z" fill="%23f1f5f9" stroke="%2338bdf8" stroke-width="2"/><polygon points="100,120 115,145 85,145" fill="%2338bdf8"/></svg>'
+    prompt: 'The Visionary, a high-fashion creative director in a structured charcoal overcoat and magenta silk scarf inside a minimalist modern gallery with dramatic shadows, 4K.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="vis-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233b0764"/><stop offset="100%" stop-color="%23f43f5e"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23vis-bg)"/><circle cx="100" cy="82" r="38" fill="%23fed7aa"/><path d="M 60 68 Q 100 30 140 68 L 135 85 Q 100 50 65 85 Z" fill="%2318181b"/><circle cx="86" cy="80" r="4" fill="%2318181b"/><circle cx="114" cy="80" r="4" fill="%2318181b"/><path d="M 50 145 Q 100 120 150 145 L 160 200 L 40 200 Z" fill="%2318181b"/><path d="M 85 130 Q 100 160 115 130 Q 125 180 100 185 Q 75 180 85 130 Z" fill="%23db2777"/></svg>'
+  },
+  {
+    id: 'the-commander',
+    name: 'The Commander',
+    desc: 'Deep-space mission commander & orbital pioneer',
+    role: 'Deep-Space Mission Commander',
+    category: 'Sci-Fi',
+    style: 'Cinematic',
+    prompt: 'The Commander, an orbital spacecraft commander in a pressurized aerodynamic flight suit looking through the cupola at an earthrise, volumetric solar flare, 8K ultra-detailed.',
+    avatar: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="cmd-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e1b4b"/><stop offset="100%" stop-color="%23f59e0b"/></linearGradient></defs><rect width="200" height="200" rx="14" fill="url(%23cmd-bg)"/><circle cx="100" cy="82" r="38" fill="%23dfa06e"/><path d="M 58 72 Q 100 35 142 72 L 140 115 Q 100 135 60 115 Z" fill="%231e293b"/><circle cx="86" cy="80" r="4" fill="%23451a03"/><circle cx="114" cy="80" r="4" fill="%23451a03"/><path d="M 50 145 Q 100 120 150 145 L 160 200 L 40 200 Z" fill="%23f1f5f9"/><circle cx="100" cy="155" r="10" fill="%230f172a" stroke="%23f59e0b" stroke-width="2"/></svg>'
   }
 ];
 
@@ -154,16 +154,20 @@ export default function CharactersPage() {
 
   // Filter characters in workspace
   const filteredCharacters = allCharacters.filter((char) => {
-    const isActor = char.gender === 'Actor' || char.category === 'Actor' || (char.category !== 'Actress' && !char.isCustom);
-    const isActress = char.gender === 'Actress' || char.category === 'Actress';
+    const cat = (char.category || char.type || char.gender || '').toLowerCase();
+    const isExecHost = cat.includes('exec') || cat.includes('host') || cat.includes('lead') || cat.includes('actor');
+    const isTechSciFi = cat.includes('tech') || cat.includes('sci-fi') || cat.includes('scifi') || cat.includes('sci') || cat.includes('innovat');
+    const isCreativeAction = cat.includes('creative') || cat.includes('cinematic') || cat.includes('action') || cat.includes('explorer') || cat.includes('wellness') || cat.includes('actress');
 
     const matchesCategory =
       activeCategory === 'All'
         ? true
-        : activeCategory === 'Actors'
-        ? isActor
-        : activeCategory === 'Actresses'
-        ? isActress
+        : activeCategory === 'Executive & Host'
+        ? isExecHost
+        : activeCategory === 'Tech & Sci-Fi'
+        ? isTechSciFi
+        : activeCategory === 'Creative & Action'
+        ? isCreativeAction
         : activeCategory === 'Custom'
         ? char.isCustom
         : true;
@@ -173,7 +177,8 @@ export default function CharactersPage() {
         ? true
         : char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (char.role && char.role.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (char.lore && char.lore.toLowerCase().includes(searchQuery.toLowerCase()));
+          (char.lore && char.lore.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (char.category && char.category.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesCategory && matchesSearch;
   });
@@ -214,7 +219,7 @@ export default function CharactersPage() {
       language === 'ta'
         ? `${archetype.name} மாதிரி தேர்ந்தெடுக்கப்பட்டது!`
         : `Selected sample prompt for ${archetype.name}!`,
-      'Sparkles'
+      'Check'
     );
   };
 
@@ -230,7 +235,7 @@ export default function CharactersPage() {
     setShowProjectImportModal(false);
     showToast(
       language === 'ta' ? `${char.name} தகவல் இறக்குமதி செய்யப்பட்டது!` : `Imported from ${char.name}!`,
-      'Sparkles'
+      'Check'
     );
   };
 
@@ -248,7 +253,7 @@ export default function CharactersPage() {
         language === 'ta'
           ? 'விளக்கத்திலிருந்து புதிய உருவப்படம் உருவாக்கப்பட்டது!'
           : 'Generated portrait from character description!',
-        'Sparkles'
+        'Check'
       );
     }, 600);
   };
@@ -333,7 +338,7 @@ export default function CharactersPage() {
       deleteCharacter(activeDetailCharacter.id);
       setActiveDetailCharacter(null);
     } else {
-      showToast('Default superstar characters cannot be deleted.', 'AlertTriangle');
+      showToast('Default professional characters cannot be deleted.', 'AlertTriangle');
     }
   };
 
@@ -346,7 +351,7 @@ export default function CharactersPage() {
     });
     showToast(
       language === 'ta' ? `${character.name} பிராம்ட் ஸ்டுடியோவில் திறக்கப்பட்டது!` : `Loaded ${character.name} into Prompt to Video!`,
-      'Sparkles'
+      'Check'
     );
   };
 
@@ -359,7 +364,7 @@ export default function CharactersPage() {
     });
     showToast(
       language === 'ta' ? `${character.name} இமேஜ் ஸ்டுடியோவில் திறக்கப்பட்டது!` : `Loaded ${character.name} into Image to Video!`,
-      'Sparkles'
+      'Check'
     );
   };
 
@@ -461,7 +466,7 @@ export default function CharactersPage() {
                   className="prompt-tool-pill-btn"
                   title="Generate portrait from description"
                 >
-                  <Icons.Sparkles size={14} />
+                  <Icons.Image size={14} />
                   <span>{isGeneratingImage ? 'Generating...' : 'Generate Portrait'}</span>
                 </button>
               </div>
@@ -656,7 +661,7 @@ export default function CharactersPage() {
               onClick={() => handleSaveCharacter('prompt')}
               className="studio-launch-pill-btn"
             >
-              <Icons.Sparkles size={14} />
+              <Icons.Film size={14} />
               <span>Save & Launch Prompt Video</span>
             </button>
             <button
@@ -670,14 +675,14 @@ export default function CharactersPage() {
           </div>
         </div>
 
-        {/* Project Import Superstars Modal */}
+        {/* Project Import Characters Modal */}
         {showProjectImportModal && (
           <div className="modal-overlay" onClick={() => setShowProjectImportModal(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
               <div className="modal-top-accent" />
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                 <h3 className="modal-title" style={{ textAlign: 'left', margin: 0 }}>
-                  {language === 'ta' ? 'கதாபாத்திரத்தை தேர்வுசெய்க' : 'Add from Project / Superstars'}
+                  {language === 'ta' ? 'கதாபாத்திரத்தை தேர்வுசெய்க' : 'Add from Professional Library'}
                 </h3>
                 <button
                   type="button"
@@ -689,7 +694,7 @@ export default function CharactersPage() {
               </div>
 
               <p className="modal-subtitle" style={{ textAlign: 'left', width: '100%', margin: 0 }}>
-                Select an existing character or superstar persona to populate as your foundation.
+                Select an existing character or professional persona to populate as your foundation.
               </p>
 
               <div className="project-import-grid" style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px', maxHeight: '380px', overflowY: 'auto', padding: '4px' }}>
@@ -761,8 +766,9 @@ export default function CharactersPage() {
         <div className="workspace-header-right-pills">
           {[
             { key: 'All', label: 'All' },
-            { key: 'Actors', label: 'Actors' },
-            { key: 'Actresses', label: 'Actresses' },
+            { key: 'Executive & Host', label: 'Executive & Host' },
+            { key: 'Tech & Sci-Fi', label: 'Tech & Sci-Fi' },
+            { key: 'Creative & Action', label: 'Creative & Action' },
             { key: 'Custom', label: 'Custom' }
           ].map(({ key, label }) => {
             if (key === 'Custom' && customCharacters.length === 0) return null;
@@ -913,7 +919,7 @@ export default function CharactersPage() {
                       className="hover-studio-btn"
                       title="Open in Prompt to Video"
                     >
-                      <Icons.Sparkles size={12} />
+                      <Icons.Film size={12} />
                       <span>Prompt</span>
                     </button>
                     <button
@@ -1023,7 +1029,7 @@ export default function CharactersPage() {
                         onClick={() => handleUseInPromptVideo(activeDetailCharacter)}
                         className="char-use-video-btn char-use-prompt-btn"
                       >
-                        <Icons.Sparkles size={16} />
+                        <Icons.Film size={16} />
                         <span>Use in Prompt to Video</span>
                       </button>
 

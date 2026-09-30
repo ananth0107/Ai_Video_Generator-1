@@ -67,6 +67,25 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
     onCloseMobile();
   };
 
+  const handleStartNewChat = () => {
+    navigate('/video');
+    onCloseMobile();
+  };
+
+  const handlePromptToVideoNav = () => {
+    navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
+    window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'prompt-to-video' } }));
+    window.dispatchEvent(new CustomEvent('new-chat-prompt'));
+    onCloseMobile();
+  };
+
+  const handleImageToVideoNav = () => {
+    navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
+    window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'image-to-video' } }));
+    window.dispatchEvent(new CustomEvent('new-chat-image'));
+    onCloseMobile();
+  };
+
   // Open saved history item directly in its studio to edit
   const handleOpenItemInStudio = (item) => {
     const isImage = isImageVideo(item);
@@ -163,12 +182,9 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
               <button
                 type="button"
                 className={`nav-item-btn video-parent-btn ${isVideoHub ? 'active-parent active-item' : isAiVideoActive ? 'active-parent' : ''}`}
-                onClick={() => {
-                  navigate('/video');
-                  setIsVideoOpen(true);
-                  onCloseMobile();
-                }}
-                title="AI VIDEO Hub"
+                onClick={() => setIsVideoOpen((prev) => !prev)}
+                title="Toggle AI Video Submenu"
+                aria-expanded={isVideoOpen}
               >
                 <div className="nav-btn-left">
                   <span className="sidebar-item-icon"><Icons.Video /></span>
@@ -176,10 +192,6 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
                 </div>
                 <span
                   className={`nav-arrow ${isVideoOpen ? 'expanded' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsVideoOpen(!isVideoOpen);
-                  }}
                   title="Toggle Video Submenu"
                 >
                   <Icons.ChevronDown />
@@ -190,17 +202,29 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
                 <div className="nav-sub-items">
                   <button
                     type="button"
-                    className={`sub-nav-item ${isPromptToVideo ? 'active-sub' : ''}`}
-                    onClick={() => handleNav('/prompt-to-video')}
+                    className="sub-nav-item new-chat-sub-item"
+                    onClick={handleStartNewChat}
+                    title={language === 'ta' ? 'புதிய உரையாடல் (உள்ளீடுகளை மீட்டமைக்க)' : 'Start a fresh session'}
                   >
-                    <span className="sidebar-item-icon"><Icons.Sparkles /></span>
+                    <span className="sidebar-item-icon new-chat-icon"><Icons.Plus size={15} /></span>
+                    <span className="sidebar-item-text">{t('newChat', 'New Chat')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`sub-nav-item ${isPromptToVideo ? 'active-sub' : ''}`}
+                    onClick={handlePromptToVideoNav}
+                    title={language === 'ta' ? 'புதிய உரையாடல் (Prompt to Video)' : 'Start fresh Prompt to Video'}
+                  >
+                    <span className="sidebar-item-icon"><Icons.Film /></span>
                     <span className="sidebar-item-text">{t('promptToVideo')}</span>
                   </button>
 
                   <button
                     type="button"
                     className={`sub-nav-item ${isImageToVideo ? 'active-sub' : ''}`}
-                    onClick={() => handleNav('/image-to-video')}
+                    onClick={handleImageToVideoNav}
+                    title={language === 'ta' ? 'புதிய உரையாடல் (Image to Video)' : 'Start fresh Image to Video'}
                   >
                     <span className="sidebar-item-icon"><Icons.Image /></span>
                     <span className="sidebar-item-text">{t('imageToVideo')}</span>
@@ -224,7 +248,9 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
               <button
                 type="button"
                 className="nav-item-btn history-parent-btn"
-                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                onClick={() => setIsHistoryOpen((prev) => !prev)}
+                title="Toggle History Menu"
+                aria-expanded={isHistoryOpen}
               >
                 <div className="nav-btn-left">
                   <span className="sidebar-item-icon"><Icons.History /></span>
@@ -235,10 +261,6 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
                 )}
                 <span
                   className={`nav-arrow ${isHistoryOpen ? 'expanded' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsHistoryOpen(!isHistoryOpen);
-                  }}
                   title="Toggle history submenu"
                 >
                   <Icons.ChevronDown />
@@ -262,7 +284,7 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
                             onClick={() => handleOpenItemInStudio(item)}
                           >
                             <span className="sidebar-item-icon">
-                              {isImageVideo(item) ? <Icons.Image /> : <Icons.Sparkles />}
+                              {isImageVideo(item) ? <Icons.Image /> : <Icons.Film />}
                             </span>
                             <span className="sidebar-history-item-title">{item.name}</span>
                           </button>
@@ -291,7 +313,6 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
             <div className="upgrade-pro-box">
               <div className="pro-box-header">
                 <span className="pro-title">{t('upgradeToPro')}</span>
-                <span className="pro-sparkle">✨</span>
               </div>
               <p className="pro-sub">{t('proPerkDesc')}</p>
             </div>
@@ -299,7 +320,7 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
         )}
 
         {/* User Profile Bar with Token Usage & Settings (Under menu bar) */}
-        <div className="sidebar-bottom-profile-wrap" style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div className="sidebar-bottom-profile-wrap">
           <UserProfileMenu onCloseSidebar={onCloseMobile} />
         </div>
 

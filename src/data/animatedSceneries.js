@@ -63,7 +63,7 @@ export const animatedSceneries = [
     id: 'cosmic-nebula',
     title: 'Deep Cosmic Nebula Portal',
     tag: 'Space Fantasy',
-    icon: '✨',
+    icon: '🌌',
     category: 'Deep Space',
     prompt: 'Swirling interstellar deep space nebula with glowing violet cosmic dust, distant spiral galaxies, and shimmering supernova starlight.',
     aspectRatio: '16:9',

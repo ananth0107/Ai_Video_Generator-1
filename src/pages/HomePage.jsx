@@ -12,7 +12,7 @@ export default function HomePage() {
   const handleAskSubmit = (e) => {
     e.preventDefault();
     if (!askInput.trim()) return;
-    showToast(`Sending to THAMILI AI: "${askInput}"`, 'Sparkles');
+    showToast(`Sending to THAMILI AI: "${askInput}"`, 'Check');
     navigate('/chat');
   };
 
@@ -60,7 +60,7 @@ export default function HomePage() {
                 className="tool-btn"
                 style={{ padding: '6px 12px', fontSize: '12px' }}
               >
-                <Icons.Sparkles /> Prompt to Video
+                <Icons.Film /> Prompt to Video
               </button>
               <button
                 type="button"
@@ -87,7 +87,7 @@ export default function HomePage() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', maxWidth: '780px' }}>
         {[
           { name: 'AI VIDEO', route: '/video', icon: <Icons.Video />, highlight: true },
-          { name: 'Prompt to Video', route: '/prompt-to-video', icon: <Icons.Sparkles /> },
+          { name: 'Prompt to Video', route: '/prompt-to-video', icon: <Icons.Film /> },
           { name: 'Image to Video', route: '/image-to-video', icon: <Icons.Image /> },
           { name: 'AI Chat', route: '/chat', icon: <Icons.Chat /> },
           { name: 'AI Code', route: '/code', icon: <Icons.Code /> },

@@ -27,7 +27,7 @@ export default function ImageGenPage() {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
-    showToast('Generating AI Image with Fal.ai FLUX...', 'Sparkles');
+    showToast('Generating AI Image with Fal.ai FLUX...', 'Check');
 
     try {
       const fullPrompt = `${prompt.trim()}, ${style} style, ultra detailed 8k`;
@@ -40,7 +40,7 @@ export default function ImageGenPage() {
       };
 
       setGalleryImages((prev) => [newImage, ...prev]);
-      showToast('✨ Fal.ai FLUX Image generated successfully!', 'Check');
+      showToast('Fal.ai FLUX Image generated successfully!', 'Check');
     } catch (err) {
       console.error('Image generation error:', err);
       showToast('Image generation notice: check Fal.ai Key / Balance in Settings', 'Trash2');
@@ -63,7 +63,7 @@ export default function ImageGenPage() {
       <div className="page-heading">
         <div className="heading-row">
           <h1 className="main-title">AI Image Studio</h1>
-          <span className="version-badge"><Icons.Sparkles /> Fal.ai FLUX & SDXL</span>
+          <span className="version-badge">Fal.ai FLUX & SDXL</span>
         </div>
         <p className="main-subtitle">Generate photorealistic images and digital artwork from text prompts.</p>
       </div>
@@ -105,7 +105,7 @@ export default function ImageGenPage() {
               className="generate-btn"
               style={{ width: 'auto', marginTop: 0, padding: '10px 24px', opacity: isGenerating ? 0.7 : 1 }}
             >
-              <Icons.Sparkles />
+              <Icons.Image />
               <span>{isGenerating ? 'Generating Image...' : 'Generate Image'}</span>
             </button>
           </div>

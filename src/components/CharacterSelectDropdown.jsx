@@ -100,7 +100,10 @@ export default function CharacterSelectDropdown({
         <button
           type="button"
           className={`char-dropdown-trigger ${isOpen ? 'active' : ''}`}
-          onClick={() => setIsOpen((prev) => !prev)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen((prev) => !prev);
+          }}
           aria-expanded={isOpen}
           aria-haspopup="true"
         >
@@ -131,7 +134,7 @@ export default function CharacterSelectDropdown({
 
         {/* Dropdown Popover Menu */}
         {isOpen && (
-          <div className="char-dropdown-popover google-flow-popover">
+          <div className="char-dropdown-popover google-flow-popover" onClick={(e) => e.stopPropagation()}>
             {/* 1. TOP ACTION ROW: + New Character */}
             <div className="char-popover-top-action">
               <button

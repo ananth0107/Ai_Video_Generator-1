@@ -180,7 +180,7 @@ export default function HistoryPlayerModal({
               {isImage ? (
                 <><Icons.Image /> {t('step1PromptLabel', 'Motion Description')}</>
               ) : (
-                <><Icons.Sparkles /> {t('typedPrompt', 'Typed Prompt')}</>
+                <><Icons.Film /> {t('typedPrompt', 'Typed Prompt')}</>
               )}
             </span>
             <p className="history-detail-prompt-text">"{videoItem.prompt || 'No description provided.'}"</p>

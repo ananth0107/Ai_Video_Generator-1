@@ -1,32 +1,34 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import { Icons } from './components/Icons';
 import LoadingFallback from './components/LoadingFallback';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
-// Lazy-loaded pages for optimized performance & fast initial loading
-const PromptToVideoPage = lazy(() => import('./pages/PromptToVideoPage'));
-const ImageToVideoPage = lazy(() => import('./pages/ImageToVideoPage'));
+import VideoPage from './pages/VideoPage';
+import PromptToVideoPage from './pages/PromptToVideoPage';
+import ImageToVideoPage from './pages/ImageToVideoPage';
+import CharactersPage from './pages/CharactersPage';
+import HistoryPage from './pages/HistoryPage';
+
+// Lazy-loaded secondary pages for background efficiency
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const CodePage = lazy(() => import('./pages/CodePage'));
 const ImageGenPage = lazy(() => import('./pages/ImageGenPage'));
 const LearnPage = lazy(() => import('./pages/LearnPage'));
 const ToolsPage = lazy(() => import('./pages/ToolsPage'));
-const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const CharactersPage = lazy(() => import('./pages/CharactersPage'));
-const VideoPage = lazy(() => import('./pages/VideoPage'));
-const VideoHubPage = lazy(() => import('./pages/VideoPage'));
 const GeneratedOutputPage = lazy(() => import('./pages/GeneratedOutputPage'));
 
 export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="thamili-app-root">
-      <div className="thamili-layout-container">
+    <ErrorBoundary>
+      <div className="thamili-app-root">
+        <div className="thamili-layout-container">
         {/* Left Sidebar */}
         <Sidebar
           isMobileOpen={isMobileMenuOpen}
@@ -35,9 +37,15 @@ export default function App() {
 
         {/* Right Main Studio Content Area */}
         <div className="thamili-main-wrapper">
-          <Header
-            onToggleMobileSidebar={() => setIsMobileMenuOpen((prev) => !prev)}
-          />
+          {/* Floating Mobile Toggle Button */}
+          <button
+            type="button"
+            className="floating-mobile-menu-btn"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            aria-label="Open Sidebar"
+          >
+            <Icons.Menu size={18} />
+          </button>
 
           <main className="thamili-page-main">
             <Suspense fallback={<LoadingFallback />}>
@@ -86,6 +94,7 @@ export default function App() {
         </div>
       </div>
     </div>
+  </ErrorBoundary>
   );
 }
 

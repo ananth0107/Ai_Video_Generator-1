@@ -1,9 +1,9 @@
+/**
+ * Unified Video & AI Service (OpenRouter + Google Gemini)
+ */
 export {
   enhancePrompt,
-  enhancePromptWithOpenRouter,
   generateTextToVideo,
   generateImageToVideo,
-  generatePixazoTextToVideo,
-  generatePixazoImageToVideo,
-  testPixazoConnection
-} from './falAiService.js';
+  testBackendConnection
+} from './videoService.js';

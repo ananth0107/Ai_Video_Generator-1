@@ -1,0 +1,211 @@
+================================================================================
+                    THAMILI AI VIDEO GENERATOR STUDIO
+                      Comprehensive Technical Manual & Node Map
+================================================================================
+
+1. OVERALL BRIEF CONCEPT OF OUR WEBSITE
+--------------------------------------------------------------------------------
+THAMILI AI is a state-of-the-art AI-powered Video & Multimedia Generation Studio 
+tailored with rich cultural aesthetics (Tamil heritage combined with futuristic 
+cyberpunk design). The platform provides creators, directors, writers, and artists 
+with an end-to-end suite of generative tools:
+
+• Prompt-to-Video Generation: Transform natural language descriptions into 4K 
+  cinematic videos with fine-tuned camera motions, visual styles, and lighting moods.
+• Image-to-Video Animation: Animate static character portraits, sceneries, or concept 
+  art into realistic fluid video sequences.
+• Character Consistency System: Select and lock characters across multiple video 
+  generations to maintain facial features, attire, and identity continuity.
+• AI Prompt Engineering Pipeline: Automatically expand simple prompts into 4K 
+  hyper-detailed cinematic directives before passing them to video diffusion engines.
+• 3D Tamil Glyph Neural Sphere Generation Animation: An interactive 3D canvas 
+  featuring 340 Fibonacci-distributed Tamil glyph nodes with real-time kinetic 
+  physics, hover collapse, and cursor supernova splash impulses while generating.
+• Custom Neural Video Player: High-performance video player supporting timeline 
+  scrubbing, speed variations, loop toggles, aspect-ratio switching, and HD downloads.
+• Dual Language Interface: Fully localized in English and Tamil (தமிழ்) with instant 
+  switching across all buttons, descriptions, and notifications.
+• Local History & Token Accounting: Offline-first localStorage persistence for 
+  saved creations, video library exports, and simulated token usage tracking.
+
+
+2. ARCHITECTURE OVERVIEW & APIS USED
+--------------------------------------------------------------------------------
+The application uses a hybrid fullstack architecture (Vite React Frontend + 
+Express Node.js Backend Proxy + Multi-AI Provider Pipeline):
+
+[FRONTEND]
+  React 18/19 Single Page Application (Vite)
+       │
+       ▼ (Proxy HTTP Calls)
+[BACKEND CONTROLLER & VITE PROXY]
+  Express Server (server.js / vite.config.js / server/server.js)
+       │
+       ├──► 1. OpenRouter AI API (openai/gpt-4o-mini)
+       │       - Prompt expansion, video prompt structuring & multi-turn chat
+       │
+       ├──► 2. Google Gemini API (@google/genai)
+       │       - Gemini Veo (models/veo-3.1-generate-preview): Real Video Generation
+       │       - Gemini Flash (models/gemini-3.6-flash): Multimodal AI & Prompt Enhancement
+       │
+       └──► 3. Fal.ai Secure Proxy (/api/fal/proxy)
+               - Secure server-side credential proxy for Fal client workflows
+
+
+3. FRONTEND ARCHITECTURE & COMPONENTS
+--------------------------------------------------------------------------------
+• Tech Stack: React, Vite, React Router DOM, Lucide Icons, HTML5 Canvas 2D Physics.
+• Styling: Custom Vanilla CSS design system (Dark mode, glassmorphism, glowing sweeps).
+
+[Context Providers (src/context/)]:
+  1. LanguageContext.jsx: Manages global English/Tamil (en/ta) translations & localization.
+  2. ToastContext.jsx: Global floating toast alerts with animations and custom icons.
+  3. CharacterContext.jsx: Global character library state, selection, creation & persistence.
+  4. VideoContext.jsx: Active video playback state, generation caching & library management.
+
+[Key Pages (src/pages/)]:
+  1. PromptToVideoPage.jsx:
+     - Multi-step text-to-video creator interface.
+     - Controls for Style (Cinematic, Anime, Photorealistic, etc.), Aspect Ratio (16:9, 9:16, 1:1), 
+       Camera Motion (Zoom, Pan, Orbit), Lighting Mood (Volumetric, Golden Hour, Cyberpunk).
+     - Character tag picker popover.
+     - Split-screen studio layout with real-time DotMatrixWaveCanvas generation view.
+  2. ImageToVideoPage.jsx:
+     - Image drag-and-drop or file upload.
+     - Motion prompt input and duration/ratio configuration.
+     - Output preview with interactive generation feedback.
+  3. CleanStudioPage.jsx:
+     - Template-driven prompt studio with quick-start cards, image upload chips, and 
+       Creator Marketplace exploration.
+  4. GeneratedOutputPage.jsx:
+     - Dedicated high-definition player view with sidebar metadata, prompt breakdown, 
+       regeneration shortcuts, and export options.
+  5. CharactersPage.jsx:
+     - Character creation lab with name, age, description, gender, and prompt-to-image avatar generation.
+  6. HistoryPage.jsx:
+     - Grid of previous generations with filters, search, full-screen playback modal, and deletion.
+  7. ChatPage.jsx:
+     - Conversational assistant powered by OpenRouter to ideate storylines and scene prompts.
+  8. ImageGenPage.jsx:
+     - Standalone AI image generation workspace.
+  9. CodePage.jsx:
+     - Generative AI script and code assistant.
+  10. VideoHubPage.jsx & VideoPage.jsx:
+     - Curated showcase of AI video inspirations and community templates.
+  11. SettingsPage.jsx & ToolsPage.jsx & LearnPage.jsx:
+     - API health monitoring, theme toggles, video generation guides, and token meters.
+
+[Core Components (src/components/)]:
+  1. DotMatrixWaveCanvas.jsx:
+     - 340 Fibonacci 3D sphere surface nodes carrying Tamil glyphs (அ, ஆ, இ, தமிழி, etc.).
+     - Interactive physics pointer listener (pointermove, pointerdown supernova explosion).
+     - Synaptic glowing filament connectors and radial bioluminescent glow.
+     - Glassmorphism progress pill badge with pulsing gradient border.
+  2. VideoPlayer.jsx:
+     - Complete HTML5 custom video player with play/pause, timecode, scrubber bar, playback 
+       speed selector (0.5x, 1x, 1.25x, 1.5x, 2x), volume control, loop mode, 16:9 / 9:16 / 1:1 
+       aspect toggle, cinema mode, fullscreen, and direct MP4 export.
+  3. GeneratingModal.jsx:
+     - Futuristic modal dialog with DotMatrixWaveCanvas visualizer and cancel action.
+  4. CharacterSelectDropdown.jsx:
+     - Multi-select character drawer with search, avatar tags, and character detail chips.
+  5. Header.jsx & Sidebar.jsx:
+     - Main navigation, language toggle, theme toggle, and responsive mobile drawer.
+  6. UserProfileMenu.jsx:
+     - User account info, plan credits, quick settings, and keyboard shortcut sheets.
+
+
+4. BACKEND ARCHITECTURE & SERVICES
+--------------------------------------------------------------------------------
+• Runtime: Node.js (ES Modules) with Express.
+• Supported Modes:
+  a) Vite Dev Server Plugin (vite.config.js): Integrates API proxy directly into dev port 5173.
+  b) Standalone Production Server (server.js & server/server.js): Runs on port 5000/3000.
+
+[Backend Endpoints]:
+  • POST /api/openrouter/enhance-prompt
+    - Accepts user prompt, target visual style, resolution, aspect ratio, and characters.
+    - Sends structured instruction to OpenRouter (openai/gpt-4o-mini).
+    - Returns 4K expanded prompt paragraph.
+
+  • POST /api/openrouter/chat
+    - Handles conversational multi-turn messaging with OpenRouter.
+
+  • POST /api/video/generate (and aliases: /api/generate-video, /api/gemini/generate-video)
+    - Orchestrates video generation using Google Gemini Veo API.
+    - Automatically enhances prompt via OpenRouter if not already expanded.
+    - Manages asynchronous operation polling and returns final MP4 video URI.
+
+  • POST /api/generate-image-to-video (and alias: /api/gemini/generate-image-to-video)
+    - Receives source image and motion prompt.
+    - Triggers Gemini Veo image-to-video animation model.
+
+  • POST /api/enhance-prompt
+    - Unified prompt enhancement endpoint (prioritizes OpenRouter, falls back to Gemini Flash).
+
+  • GET /api/health (and alias: /api/gemini/health)
+    - Real-time diagnostics for configured OpenRouter and Google Gemini API keys.
+
+  • GET /generated/:filename
+    - High-efficiency HTTP 206 Partial Content streaming for generated video files.
+
+  • ALL /api/fal/proxy
+    - Secure raw proxy forwarding for @fal-ai/client without exposing FAL_KEY to frontend.
+
+
+5. ALL WORKING FUNCTIONS & UTILITIES REFERENCE
+--------------------------------------------------------------------------------
+[src/services/videoService.js]:
+  • enhancePrompt(prompt, options)
+    - Calls backend /api/openrouter/chat or /api/enhance-prompt.
+  • generateTextToVideo(prompt, options)
+    - Submits text prompt to /api/video/generate with style/ratio/camera parameters.
+  • generateImageToVideo(image, prompt, options)
+    - Submits image and prompt to /api/generate-image-to-video.
+  • testBackendConnection()
+    - Queries /api/health to confirm backend and AI service availability.
+  • normalizeErrorMessage(err, defaultMsg)
+    - Sanitizes raw network and API exceptions into clear user-friendly guidance.
+
+[src/services/openrouterService.js]:
+  • enhancePromptWithOpenRouter(options)
+    - Direct client helper for OpenRouter prompt expansion.
+  • chatWithOpenRouter(messages, options)
+    - Direct client helper for OpenRouter chat completions.
+
+[src/utils/historyStorage.js]:
+  • saveHistoryItem(item)
+    - Persists generated videos with thumbnail, prompt, parameters, and timestamps.
+  • getHistoryItems()
+    - Retrieves saved creation history sorted by most recent.
+  • deleteHistoryItem(id)
+    - Removes individual item from localStorage.
+  • toggleSavedVideo(id)
+    - Bookmarks or unbookmarks a video in the user collection.
+  • captureCanvasThumbnail(videoElement)
+    - Captures a lightweight JPEG base64 snapshot from a playing video for instant gallery thumbnails.
+
+[src/utils/tokenUsageStorage.js]:
+  • getTokenBalance()
+    - Returns current token balance (e.g. 500 initial credits).
+  • consumeTokens(amount, description)
+    - Deducts tokens and records transaction history.
+  • resetTokenBalance(amount)
+    - Resets credits back to default allocation.
+
+[src/utils/promptActionInterpreter.js]:
+  • interpretVideoPrompt(promptText)
+    - Parses prompts for cinematic keywords (e.g. drone shot, close up, volumetric light).
+
+
+6. ENVIRONMENT VARIABLES (.env)
+--------------------------------------------------------------------------------
+• GEMINI_API_KEY      : Google Gemini API key for Veo video generation & Gemini Flash.
+• OPENROUTER_API_KEY  : OpenRouter API key for high-speed prompt enhancement & chat.
+• OPENROUTER_MODEL    : Target LLM model (default: openai/gpt-4o-mini).
+• PORT                : Server port (default: 5000 / 3000).
+• FAL_KEY             : (Optional) Fal.ai proxy key for specialized diffusion models.
+
+================================================================================
+                              END OF NODE.TXT
+================================================================================

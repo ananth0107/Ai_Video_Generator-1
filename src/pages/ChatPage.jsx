@@ -71,8 +71,8 @@ export default function ChatPage() {
       if (lowerText.includes('வீடியோ') || lowerText.includes('video') || lowerText.includes('காட்சி') || lowerText.includes('prompt')) {
         isVideoRelated = true;
         replyText = lang === 'ta'
-          ? `அருமையான யோசனை! உங்கள் விபரத்திற்கான வீடியோ காட்சி அமைப்பை உருவாக்கியுள்ளேன்:\n\n✨ **AI வீடியோ காட்சி விபரம்:**\n"${fullMsgText}"\n\nஇந்த காட்சியை உயர்தர HD/4K வீடியோவாக மாற்ற, நமது **எழுத்து மூலம் வீடியோ (Prompt to Video)** அல்லது **படம் மூலம் வீடியோ (Image to Video)** ஸ்டுடியோவுக்கு செல்லலாம்.`
-          : `Excellent idea! I have structured a cinematic video prompt based on your request:\n\n✨ **AI Video Scene Prompt:**\n"${fullMsgText}"\n\nTo generate this into high-definition motion video, you can jump straight to our **Prompt to Video** or **Image to Video** studio below.`;
+          ? `அருமையான யோசனை! உங்கள் விபரத்திற்கான வீடியோ காட்சி அமைப்பை உருவாக்கியுள்ளேன்:\n\n**AI வீடியோ காட்சி விபரம்:**\n"${fullMsgText}"\n\nஇந்த காட்சியை உயர்தர HD/4K வீடியோவாக மாற்ற, நமது **எழுத்து மூலம் வீடியோ (Prompt to Video)** அல்லது **படம் மூலம் வீடியோ (Image to Video)** ஸ்டுடியோவுக்கு செல்லலாம்.`
+          : `Excellent idea! I have structured a cinematic video prompt based on your request:\n\n**AI Video Scene Prompt:**\n"${fullMsgText}"\n\nTo generate this into high-definition motion video, you can jump straight to our **Prompt to Video** or **Image to Video** studio below.`;
       } else if (lowerText.includes('திருக்குறள்') || lowerText.includes('thirukkural') || lowerText.includes('kural')) {
         replyText = lang === 'ta'
           ? `📖 **திருக்குறள் விளக்கம்:**\n\n*"அகர முதல எழுத்தெல்லாம் ஆதி\nபகவன் முதற்றே உலகு."*\n\n**பொருள்:** எழுத்துக்களுக்கெல்லாம் 'அ' எவ்வாறு தொடக்கமாக இருக்கிறதோ, அதுபோல இந்த உலகத்திற்கு முதன்மையானவன் கடவுள் (இயற்கை).\n\nதிருக்குறள் வாழ்வியல் நெறிகளையும், அறம், பொருள், இன்பம் ஆகிய முப்பால்களையும் எக்காலத்திற்கும் பொருந்தும் வகையில் விளக்குகிறது.`
@@ -98,7 +98,7 @@ export default function ChatPage() {
       };
 
       setMessages((prev) => [...prev, aiReply]);
-      showToast(lang === 'ta' ? 'தமிழி AI பதிலளித்துள்ளது' : 'Response received from THAMILI AI', 'Sparkles');
+      showToast(lang === 'ta' ? 'தமிழி AI பதிலளித்துள்ளது' : 'Response received from THAMILI AI', 'Check');
     }, 1000);
   };
 
@@ -172,7 +172,7 @@ export default function ChatPage() {
     { label: t('chatPillVoice'), icon: <Icons.Audio />, action: () => handleVoiceToggle() },
     { label: t('chatPillAsk'), icon: <Icons.Chat />, action: () => setInputVal(lang === 'ta' ? 'தமிழி AI என்னென்ன செய்யும்?' : 'What can THAMILI AI do?') },
     { label: t('chatPillImage'), icon: <Icons.Image />, action: () => fileInputRef.current?.click() },
-    { label: t('chatPillDiscover'), icon: <Icons.Sparkles />, action: () => handleSend(lang === 'ta' ? 'தமிழ்நாட்டின் வரலாற்று சிறப்புகள் சிலவற்றை சுருக்கமாக கூறுக.' : 'Briefly summarize the historic heritage of Tamil Nadu.') },
+    { label: t('chatPillDiscover'), icon: <Icons.Globe />, action: () => handleSend(lang === 'ta' ? 'தமிழ்நாட்டின் வரலாற்று சிறப்புகள் சிலவற்றை சுருக்கமாக கூறுக.' : 'Briefly summarize the historic heritage of Tamil Nadu.') },
     { label: t('chatPillLearn'), icon: <Icons.Docs />, action: () => handleSend(lang === 'ta' ? 'திருக்குறள் அறத்துப்பாலின் முக்கிய கருத்துக்கள் யாவை?' : 'Key insights from Thirukkural on virtues.') },
   ];
 
@@ -182,7 +182,7 @@ export default function ChatPage() {
       <div className="chat-brand-hero">
         <div className="chat-hero-banner-content">
           <div className="chat-brand-badge">
-            <Icons.Sparkles />
+            <Icons.Zap />
             <span>{t('brandPill')}</span>
           </div>
 
@@ -291,7 +291,7 @@ export default function ChatPage() {
                             onClick={() => navigate('/prompt-to-video')}
                             className="suggest-video-btn btn-prompt-jump"
                           >
-                            <Icons.Sparkles />
+                            <Icons.Film />
                             <span>{lang === 'ta' ? 'எழுத்து மூலம் வீடியோ உருவாக்க →' : 'Prompt to Video Studio →'}</span>
                           </button>
                           <button

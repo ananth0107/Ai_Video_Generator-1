@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const handleTestConnection = async () => {
     setTestingToken(true);
     setTokenStatus(null);
-    showToast('Testing Gemini & OpenRouter backend connection...', 'Sparkles');
+    showToast('Testing Gemini & OpenRouter backend connection...', 'Check');
 
     const res = await testBackendConnection();
     setTokenStatus(res);

@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from '../components/Icons';
+import DotMatrixWaveCanvas from '../components/DotMatrixWaveCanvas';
 import TamilParticleOrb from '../components/TamilParticleOrb';
 import GeneratingModal from '../components/GeneratingModal';
 import VideoPlayer from '../components/VideoPlayer';
 import SaveVideoModal from '../components/History/SaveVideoModal';
+import CharacterReferencePanel from '../components/CharacterReferencePanel';
 import { saveHistoryItem, deleteHistoryItem, captureCanvasThumbnail } from '../utils/historyStorage';
 import { useToast } from '../context/ToastContext';
 import { useCharacters } from '../context/CharacterContext';
@@ -39,56 +41,15 @@ export default function PromptToVideoPage() {
   const [activeSceneryId, setActiveSceneryId] = useState(location.state?.sceneryId || null);
   const [generationResults, setGenerationResults] = useState(null);
 
-  // Character picker popover state for + button inside prompt box
+  // Modern Characters Reference panel state
   const [isCharPickerOpen, setIsCharPickerOpen] = useState(false);
-  const [charSearch, setCharSearch] = useState('');
-  const charPickerRef = useRef(null);
-
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (charPickerRef.current && !charPickerRef.current.contains(e.target)) {
-        setIsCharPickerOpen(false);
-      }
-    };
-    if (isCharPickerOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [isCharPickerOpen]);
-
-  const filteredCharacters = allCharacters.filter((char) => {
-    if (!charSearch.trim()) return true;
-    const q = charSearch.toLowerCase();
-    return (
-      char.name.toLowerCase().includes(q) ||
-      (char.role && char.role.toLowerCase().includes(q)) ||
-      (char.category && char.category.toLowerCase().includes(q))
-    );
-  });
 
   const handleToggleCharacter = (character) => {
-    const wasSelected = selectedCharacterIds.includes(character.id);
     toggleSelectCharacter(character.id);
-    if (!wasSelected) {
-      handleInsertCharacterIntoPrompt(character);
-    } else {
-      setPromptText((prev) => {
-        const regex = new RegExp(`@${character.name}\\s*`, 'gi');
-        return prev.replace(regex, '').trim();
-      });
-    }
   };
 
-  const handleRemoveCharacter = (charId, charName) => {
+  const handleRemoveCharacter = (charId) => {
     removeSelectedCharacter(charId);
-    if (charName) {
-      setPromptText((prev) => {
-        const regex = new RegExp(`@${charName}\\s*`, 'gi');
-        return prev.replace(regex, '').trim();
-      });
-    }
   };
 
   // Generation state
@@ -114,56 +75,34 @@ export default function PromptToVideoPage() {
     isSaved: false
   });
 
-  useEffect(() => {
-    if (location.state?.presetPrompt) {
-      setPromptText(location.state.presetPrompt);
-    }
-    if (location.state?.presetAspect) {
-      setPromptAspect(location.state.presetAspect);
-    }
-    if (location.state?.presetStyle) {
-      setPromptStyle(location.state.presetStyle);
-    }
-    if (location.state?.cameraMotion) {
-      setCameraMotion(location.state.cameraMotion);
-    }
-    if (location.state?.lightingMood) {
-      setLightingMood(location.state.lightingMood);
-    }
-    if (location.state?.sceneryId) {
-      setActiveSceneryId(location.state.sceneryId);
-    }
-    if (location.state?.videoItem) {
-      setGeneratedVideo({
-        ...location.state.videoItem,
-        hasGenerated: true
-      });
-      setHasGenerated(true);
-    }
-  }, [location.state]);
+  const isGeneratingRef = useRef(false);
+  const currentRequestIdRef = useRef(0);
+  const previewSectionRef = useRef(null);
 
   // Save to History modal state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [pendingSaveVideo, setPendingSaveVideo] = useState(null);
   const [defaultSaveName, setDefaultSaveName] = useState('');
 
-  const isGeneratingRef = useRef(false);
-  const currentRequestIdRef = useRef(0);
-  const previewSectionRef = useRef(null);
+  // Page blink refresh state on New Chat
+  const [isBlinking, setIsBlinking] = useState(false);
 
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback((options = { showNotification: true }) => {
     currentRequestIdRef.current++;
     isGeneratingRef.current = false;
+    setIsBlinking(true);
+    setTimeout(() => setIsBlinking(false), 450);
+
     setPromptText('');
     setPromptAspect('16:9');
     setPromptStyle('Cinematic');
     setCameraMotion('Smooth Zoom');
     setLightingMood('Volumetric Sun');
     setIsAiEnhance(true);
+    setIsEnhancingPrompt(false);
     setActiveSceneryId(null);
     setGenerationError(null);
     setGenerationResults(null);
-    setCharSearch('');
     setIsCharPickerOpen(false);
     setIsGenerating(false);
     setProgressPercent(0);
@@ -182,12 +121,78 @@ export default function PromptToVideoPage() {
       isSaved: false
     });
     clearSelectedCharacters();
-    navigate('/prompt-to-video', { replace: true, state: null });
-    showToast(
-      language === 'ta' ? 'புதிய உரையாடல் தொடங்கப்பட்டது' : 'New session started - inputs cleared',
-      'Sparkles'
-    );
-  }, [clearSelectedCharacters, navigate, showToast, language]);
+
+    // Clean browser history state so re-renders or back/forward do not reapply old history item
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch {
+      // ignore
+    }
+
+    if (options?.showNotification !== false) {
+      showToast(
+        language === 'ta' ? 'புதிய உரையாடல் தொடங்கப்பட்டது' : 'New session started - inputs cleared',
+        'Check'
+      );
+    }
+  }, [clearSelectedCharacters, showToast, language]);
+
+  useEffect(() => {
+    if (location.state?.presetPrompt || location.state?.videoItem) {
+      if (location.state.presetPrompt) {
+        setPromptText(location.state.presetPrompt);
+      }
+      if (location.state.presetAspect) {
+        setPromptAspect(location.state.presetAspect);
+      }
+      if (location.state.presetStyle) {
+        setPromptStyle(location.state.presetStyle);
+      }
+      if (location.state.cameraMotion) {
+        setCameraMotion(location.state.cameraMotion);
+      }
+      if (location.state.lightingMood) {
+        setLightingMood(location.state.lightingMood);
+      }
+      if (location.state.sceneryId) {
+        setActiveSceneryId(location.state.sceneryId);
+      }
+      if (location.state.videoItem) {
+        setGeneratedVideo({
+          ...location.state.videoItem,
+          hasGenerated: true
+        });
+        setHasGenerated(true);
+      }
+    } else if (location.state?.newChat) {
+      handleNewChat({ showNotification: true });
+    }
+  }, [location.state, handleNewChat]);
+
+  // Trigger blink on route state navigation
+  useEffect(() => {
+    if (location.state?.triggerBlink) {
+      setIsBlinking(true);
+      const timer = setTimeout(() => setIsBlinking(false), 450);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
+
+  // Listen for global new-chat trigger from menu dropdown
+  useEffect(() => {
+    const onNewChatEvent = (e) => {
+      if (e?.detail?.target && e.detail.target !== 'prompt-to-video' && e.detail.target !== 'prompt') {
+        return;
+      }
+      handleNewChat({ showNotification: true });
+    };
+    window.addEventListener('new-chat', onNewChatEvent);
+    window.addEventListener('new-chat-prompt', onNewChatEvent);
+    return () => {
+      window.removeEventListener('new-chat', onNewChatEvent);
+      window.removeEventListener('new-chat-prompt', onNewChatEvent);
+    };
+  }, [handleNewChat]);
 
   function getSmartDefaultTitle(chars, style, prompt) {
     if (chars && chars.length > 0) {
@@ -225,7 +230,7 @@ export default function PromptToVideoPage() {
         language === 'ta'
           ? 'மேம்படுத்த முதலில் ஒரு பிராம்ட்டை உள்ளிடவும்'
           : 'Please enter a prompt first to enhance it with AI',
-        'Sparkles'
+        'Check'
       );
       return;
     }
@@ -233,9 +238,9 @@ export default function PromptToVideoPage() {
     setIsEnhancingPrompt(true);
     showToast(
       language === 'ta'
-        ? '✨ OpenRouter AI மூலம் பிராம்ட் மேம்படுத்தப்படுகிறது...'
-        : '✨ Enhancing prompt with OpenRouter cinematic AI...',
-      'Sparkles'
+        ? 'OpenRouter AI மூலம் பிராம்ட் மேம்படுத்தப்படுகிறது...'
+        : 'Enhancing prompt with OpenRouter cinematic AI...',
+      'Check'
     );
 
     console.log('[OPENROUTER] Enhancing prompt from button click');
@@ -252,9 +257,9 @@ export default function PromptToVideoPage() {
         setPromptText(result.enhancedPrompt);
         showToast(
           language === 'ta'
-            ? '✨ பிராம்ட் சினிமா தரத்தில் மேம்படுத்தப்பட்டது!'
-            : '✨ Prompt enhanced into cinematic 4K video prompt!',
-          'Sparkles'
+            ? 'பிராம்ட் சினிமா தரத்தில் மேம்படுத்தப்பட்டது!'
+            : 'Prompt enhanced into cinematic 4K video prompt!',
+          'Check'
         );
         console.log('[OPENROUTER] Prompt enhancement completed successfully');
       } else {
@@ -278,7 +283,7 @@ export default function PromptToVideoPage() {
     if (!promptText.trim()) {
       showToast(
         language === 'ta' ? 'தயவுசெய்து ஒரு பிராம்ட்டை உள்ளிடவும்' : 'Please enter a valid video prompt',
-        'Sparkles'
+        'Check'
       );
       return;
     }
@@ -286,6 +291,8 @@ export default function PromptToVideoPage() {
 
     // 2. Increment request ID to uniquely identify this generation call
     const requestId = ++currentRequestIdRef.current;
+    const MIN_ANIMATION_MS = 10000;
+    const genStartTime = Date.now();
 
     // 3. Immediately clear previous generated video URL and errors
     isGeneratingRef.current = true;
@@ -306,13 +313,45 @@ export default function PromptToVideoPage() {
       isSaved: false
     });
 
-    setProgressPercent(15);
+    setProgressPercent(5);
     setProgressStatus(
-      language === 'ta' ? 'உங்கள் பிராம்ட்டை தயார் செய்கிறது...' : 'Preparing your prompt...'
+      language === 'ta' ? 'உங்கள் பிராம்ட்டை தயார் செய்கிறது...' : 'Preparing prompt & neural diffusion...'
     );
 
-    // Required console logs
     console.log('[VIDEO] Generation started');
+
+    const getStageStatus = (pct, lang) => {
+      if (pct < 20) {
+        return lang === 'ta' ? 'பிராம்ட் பகுப்பாய்வு & நியூரல் துவக்கம்...' : 'Analyzing prompt semantics & neural context...';
+      } else if (pct < 40) {
+        return lang === 'ta' ? 'நியூரல் பிரேம்களை உருவாக்குகிறது...' : 'Synthesizing neural video keyframes...';
+      } else if (pct < 65) {
+        return lang === 'ta' ? 'ஒளி அமைப்பு & சினிமா கேமரா செயலாக்கப்படுகிறது...' : 'Rendering cinematic lighting & camera motion...';
+      } else if (pct < 85) {
+        return lang === 'ta' ? '4K தரத்தில் பிரேம்கள் மெருகூட்டப்படுகிறது...' : 'Upscaling diffusion frames to 4K ultra-smooth...';
+      } else {
+        return lang === 'ta' ? 'இறுதி வீடியோ தொகுப்பு தயாராகிறது...' : 'Finalizing temporal coherence & color grading...';
+      }
+    };
+
+    // Live progress timer running smoothly over 10+ seconds
+    const progressTimer = setInterval(() => {
+      if (requestId !== currentRequestIdRef.current) {
+        clearInterval(progressTimer);
+        return;
+      }
+      const elapsed = Date.now() - genStartTime;
+      if (elapsed < MIN_ANIMATION_MS) {
+        const pct = Math.min(96, Math.max(5, Math.floor((elapsed / MIN_ANIMATION_MS) * 96)));
+        setProgressPercent(pct);
+        setProgressStatus(getStageStatus(pct, language));
+      } else {
+        setProgressPercent(98);
+        setProgressStatus(
+          language === 'ta' ? 'வீடியோ இறுதி செய்யப்படுகிறது...' : 'Polishing final video stream...'
+        );
+      }
+    }, 80);
 
     // Timeout safety handle (4 minutes)
     let isTimedOut = false;
@@ -320,12 +359,8 @@ export default function PromptToVideoPage() {
       isTimedOut = true;
     }, 240000);
 
+    let apiResponse = null;
     try {
-      setProgressPercent(30);
-      setProgressStatus(
-        language === 'ta' ? 'AI மூலம் வீடியோ உருவாக்கப்படுகிறது...' : 'Generating video with AI...'
-      );
-
       let enhancedPrompt = finalPrompt;
       if (isAiEnhance) {
         try {
@@ -347,55 +382,32 @@ export default function PromptToVideoPage() {
 
       // Check if this request is still active
       if (requestId !== currentRequestIdRef.current) {
-        console.log(`[VIDEO] Request #${requestId} superseded by newer request`);
+        clearInterval(progressTimer);
+        clearTimeout(timeoutHandle);
         return;
       }
 
-      setProgressPercent(50);
-      setProgressStatus(
-        language === 'ta' ? 'நியூரல் பிரேம்களை உருவாக்குகிறது...' : 'Synthesizing neural video keyframes...'
-      );
-
       console.log('[VIDEO] Request sent to video generation service');
 
-      // Progress animation while Gemini generates
-      let currentPct = 50;
-      const progressTimer = setInterval(() => {
-        currentPct = Math.min(94, currentPct + 4);
-        setProgressPercent(currentPct);
-        if (currentPct >= 80) {
-          setProgressStatus(
-            language === 'ta' ? 'கிட்டத்தட்ட தயாராகிவிட்டது...' : 'Almost ready...'
-          );
-        } else if (currentPct >= 65) {
-          setProgressStatus(
-            language === 'ta' ? 'வீடியோ செயலாக்கப்படுகிறது...' : 'Rendering 4K HDR frames...'
-          );
-        }
-      }, 900);
-
-      let apiResponse = null;
-      try {
-        apiResponse = await generateTextToVideo(finalPrompt, {
-          enhancedPrompt,
-          resolution: '4k',
-          aspectRatio: promptAspect,
-          characters: selectedCharacters,
-          cameraMotion,
-          lightingMood
-        });
-      } finally {
-        clearInterval(progressTimer);
-        clearTimeout(timeoutHandle);
-      }
+      apiResponse = await generateTextToVideo(finalPrompt, {
+        enhancedPrompt,
+        resolution: '4k',
+        aspectRatio: promptAspect,
+        characters: selectedCharacters,
+        cameraMotion,
+        lightingMood
+      });
 
       // Discard stale responses if a newer request was dispatched
       if (requestId !== currentRequestIdRef.current) {
+        clearInterval(progressTimer);
+        clearTimeout(timeoutHandle);
         console.log(`[VIDEO] Request #${requestId} response discarded (newer request running)`);
         return;
       }
 
       if (isTimedOut) {
+        clearInterval(progressTimer);
         throw new Error('Video generation timed out after 4 minutes');
       }
 
@@ -407,14 +419,32 @@ export default function PromptToVideoPage() {
 
       const videoUrl = apiResponse?.videoUrl || apiResponse?.results?.gemini?.videoUrl;
       if (!videoUrl) {
+        clearInterval(progressTimer);
         const failureReason = apiResponse?.error || apiResponse?.results?.gemini?.error || 'No video URL was returned by video generation service';
         throw new Error(failureReason);
       }
+
+      // Ensure the animation lasts AT LEAST 10 seconds total
+      const elapsed = Date.now() - genStartTime;
+      const remainingTime = Math.max(0, MIN_ANIMATION_MS - elapsed);
+      if (remainingTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingTime));
+      }
+
+      clearInterval(progressTimer);
+      clearTimeout(timeoutHandle);
+
+      if (requestId !== currentRequestIdRef.current) return;
 
       setProgressPercent(100);
       setProgressStatus(
         language === 'ta' ? 'வீடியோ தயாராக உள்ளது!' : 'Video ready'
       );
+
+      // Give 600ms to enjoy completion visual
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      if (requestId !== currentRequestIdRef.current) return;
 
       const activeChars = selectedCharacters.length > 0 ? selectedCharacters : [];
       const smartTitle = getSmartDefaultTitle(activeChars, promptStyle, finalPrompt);
@@ -449,6 +479,7 @@ export default function PromptToVideoPage() {
       saveHistoryItem(videoRecord);
       setGenerationResults(null);
       setIsGenerating(false);
+      isGeneratingRef.current = false;
       setGenerationError(null);
 
       consumeTokens('gemini', 150);
@@ -456,8 +487,8 @@ export default function PromptToVideoPage() {
       const providerDisplayName = (apiResponse?.provider === 'gemini' ? 'Gemini' : 'AI');
       showToast(
         language === 'ta'
-          ? `✨ ${providerDisplayName} வீடியோ உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!`
-          : `✨ ${providerDisplayName} Video generated & saved to History!`,
+          ? `${providerDisplayName} வீடியோ உருவாக்கப்பட்டு வரலாற்றில் சேமிக்கப்பட்டது!`
+          : `${providerDisplayName} Video generated & saved to History!`,
         'BookmarkCheck'
       );
 
@@ -465,6 +496,7 @@ export default function PromptToVideoPage() {
         previewSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } catch (err) {
+      clearInterval(progressTimer);
       clearTimeout(timeoutHandle);
       if (requestId !== currentRequestIdRef.current) {
         return;
@@ -609,7 +641,7 @@ export default function PromptToVideoPage() {
       }
       return prev;
     });
-    showToast(`Added @${character.name} to prompt`, 'Sparkles');
+    showToast(`Added @${character.name} to prompt`, 'Check');
   };
 
   // Helper to render prompt composer consistently across State 1 and State 2
@@ -629,12 +661,12 @@ export default function PromptToVideoPage() {
               showToast(
                 next
                   ? language === 'ta'
-                    ? '✨ AI மேம்பாடு இயக்கப்பட்டது'
-                    : '✨ AI Enhance ON: Auto-optimizing lighting & 4K HDR clarity!'
+                    ? 'AI மேம்பாடு இயக்கப்பட்டது'
+                    : 'AI Enhance ON: Auto-optimizing lighting & 4K HDR clarity!'
                   : language === 'ta'
                   ? 'AI மேம்பாடு அணைக்கப்பட்டது'
                   : 'AI Enhance turned OFF',
-                'Sparkles'
+                'Check'
               );
             }}
             className={`ai-enhance-toggle-btn ${isAiEnhance ? 'active' : ''}`}
@@ -642,7 +674,6 @@ export default function PromptToVideoPage() {
             aria-pressed={isAiEnhance}
           >
             <div className="enhance-btn-content">
-              <Icons.Sparkles />
               <span>{t('aiEnhance', 'AI Enhance')}</span>
             </div>
             <div className={`enhance-switch-track ${isAiEnhance ? 'active' : ''}`}>
@@ -654,11 +685,11 @@ export default function PromptToVideoPage() {
         </div>
       </div>
 
-      {/* Large Rounded Prompt Composer Box with soft shadow, border and light blue/purple glow */}
+      {/* Floating Glassmorphic Prompt Composer Box */}
       <div className="prompt-composer-box p2v-prompt-box">
         <textarea
           id="prompt-input"
-          rows={4}
+          rows={2}
           value={promptText}
           onChange={(e) => setPromptText(e.target.value)}
           placeholder={
@@ -669,143 +700,42 @@ export default function PromptToVideoPage() {
           className="prompt-composer-textarea p2v-composer-textarea"
         />
 
-        {/* Inside-box Footer - + Button & Characters Chips on left, Generate on right */}
-        <div className="prompt-composer-footer">
-          <div className="composer-footer-left">
-            <div className="composer-plus-wrapper" ref={charPickerRef}>
-              <button
-                type="button"
-                className={`composer-plus-btn ${isCharPickerOpen ? 'active' : ''}`}
-                onClick={() => setIsCharPickerOpen((prev) => !prev)}
-                title="Add Characters"
-                aria-label="Add Characters"
-                aria-expanded={isCharPickerOpen}
-              >
-                <Icons.Plus size={16} />
-              </button>
+        {/* Floating Glass Dock Toolbar */}
+        <div className="glass-dock-toolbar">
+          <div className="glass-dock-left">
+            <button
+              type="button"
+              className={`glass-dock-btn ${isCharPickerOpen || selectedCharacters.length > 0 ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCharPickerOpen(true);
+              }}
+              title={language === 'ta' ? 'கதாபாத்திரக் குறிப்புகளைச் சேர்க்க (+)' : 'Add Persona / Reference (+)'}
+              aria-label="Add Character References"
+              aria-expanded={isCharPickerOpen}
+            >
+              <div className="glass-dock-btn-icon">
+                <Icons.Plus size={14} />
+              </div>
+              <span>{language === 'ta' ? 'கதாபாத்திரம்' : 'Persona'}</span>
+            </button>
 
-              {/* Dropdown Menu - ONLY Characters */}
-              {isCharPickerOpen && (
-                <div className="char-dropdown-popover composer-char-popover">
-                  {/* TOP ACTION ROW: + New Character */}
-                  <div className="char-popover-top-action">
-                    <button
-                      type="button"
-                      className="popover-new-char-btn"
-                      onClick={() => {
-                        setIsCharPickerOpen(false);
-                        navigate('/characters');
-                      }}
-                    >
-                      <div className="new-char-icon-circle">
-                        <Icons.Plus size={14} />
-                      </div>
-                      <span className="new-char-label-text">+ New Character</span>
-                    </button>
-                  </div>
-
-                  <div className="popover-divider-line" />
-
-                  {/* Quick Search Box */}
-                  <div className="char-popover-search">
-                    <span className="search-icon">
-                      <Icons.Search size={14} />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder={t('searchCharactersPlaceholder', 'Search characters...')}
-                      value={charSearch}
-                      onChange={(e) => setCharSearch(e.target.value)}
-                      className="char-popover-input"
-                      autoFocus
-                    />
-                    {charSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setCharSearch('')}
-                        className="search-clear-btn"
-                      >
-                        <Icons.X size={12} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Scrollable List of Characters Only */}
-                  <div className="char-popover-list-body">
-                    {filteredCharacters.map((char) => {
-                      const isSelected = selectedCharacterIds.includes(char.id);
-                      return (
-                        <div
-                          key={char.id}
-                          className={`char-option-item flow-char-row ${isSelected ? 'selected' : ''}`}
-                          onClick={() => handleToggleCharacter(char)}
-                        >
-                          <div className="char-option-left">
-                            <div className="char-mini-avatar-wrap">
-                              <img
-                                src={char.avatar}
-                                alt={char.name}
-                                className="char-mini-avatar"
-                              />
-                            </div>
-                            <div className="char-option-details">
-                              <div className="char-option-name-row">
-                                <span className="char-option-name">{char.name}</span>
-                                {char.isCustom && (
-                                  <span className="custom-char-mini-tag">Custom</span>
-                                )}
-                              </div>
-                              <span className="char-option-role">{char.role || char.gender || 'Character'}</span>
-                            </div>
-                          </div>
-
-                          <div className={`char-checkbox-circle ${isSelected ? 'checked' : ''}`}>
-                            {isSelected && <Icons.Check size={12} />}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {filteredCharacters.length === 0 && (
-                      <div className="char-popover-empty">
-                        <p>{t('noCharactersFound', 'No characters found')}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Popover Footer */}
-                  <div className="char-popover-footer">
-                    <span className="selected-summary-text">
-                      {selectedCharacters.length} {t('selected', 'selected')}
-                    </span>
-                    <button
-                      type="button"
-                      className="popover-done-btn"
-                      onClick={() => setIsCharPickerOpen(false)}
-                    >
-                      {t('done', 'Done')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Selected Character Chips inside Prompt Box near + Button */}
+            {/* Selected Character Chips inside Floating Dock */}
             {selectedCharacters.length > 0 && (
-              <div className="composer-char-chips-row">
+              <div className="glass-dock-chips-group">
                 {selectedCharacters.map((character) => (
-                  <div key={character.id} className="composer-char-chip">
+                  <div key={character.id} className="glass-dock-chip" title={`Character Reference: ${character.name}`}>
                     <img
                       src={character.avatar}
                       alt={character.name}
-                      className="composer-chip-avatar"
+                      className="glass-dock-chip-avatar"
                     />
-                    <span className="composer-chip-name">@{character.name}</span>
+                    <span className="glass-dock-chip-name">{character.name}</span>
                     <button
                       type="button"
-                      className="composer-chip-remove"
-                      onClick={() => handleRemoveCharacter(character.id, character.name)}
-                      title={`Remove @${character.name}`}
+                      className="glass-dock-chip-remove"
+                      onClick={() => handleRemoveCharacter(character.id)}
+                      title={`Remove ${character.name}`}
                     >
                       <Icons.X size={11} />
                     </button>
@@ -815,12 +745,14 @@ export default function PromptToVideoPage() {
             )}
           </div>
 
-          <div className="composer-footer-right">
+          <div className="glass-dock-right">
+            <span className="glass-dock-counter">{promptText.length}/500</span>
+
             <button
               type="button"
               disabled={isGenerating}
               onClick={handleGenerate}
-              className={`composer-generate-btn ${hasGenerated ? 'is-regenerate' : ''}`}
+              className={`glass-dock-generate-btn ${hasGenerated ? 'is-regenerate' : ''} ${isGenerating ? 'is-generating' : ''}`}
               title={
                 hasGenerated
                   ? language === 'ta'
@@ -831,10 +763,11 @@ export default function PromptToVideoPage() {
                   : 'Generate Video (Ctrl + Enter)'
               }
             >
-              {hasGenerated && !isGenerating ? (
+              {hasGenerated && !isGenerating && (
                 <Icons.RotateCw size={14} className="regen-icon" />
-              ) : (
-                <Icons.Sparkles size={15} />
+              )}
+              {isGenerating && (
+                <Icons.Loader size={14} className="spin-icon" />
               )}
               <span>
                 {isGenerating
@@ -860,7 +793,8 @@ export default function PromptToVideoPage() {
   const isStudioState = isGenerating || (hasGenerated && !!generatedVideo?.videoUrl) || (!!generationResults && (generationResults.gemini?.videoUrl || generationResults.fal?.videoUrl));
 
   return (
-    <div className={`view-container p2v-page-container ${!isStudioState ? 'p2v-initial-state' : 'p2v-studio-state'}`}>
+    <div className={`view-container p2v-page-container ${!isStudioState ? 'p2v-initial-state' : 'p2v-studio-state'} ${isBlinking ? 'page-blink-refresh' : ''}`}>
+      {isBlinking && <div className="page-refresh-flash-overlay" aria-hidden="true" />}
       {/* Studio Header Row */}
       <div className="page-heading">
         <div className="page-heading-inner">
@@ -880,36 +814,6 @@ export default function PromptToVideoPage() {
               </div>
               <p className="main-subtitle">{t('p2vSubtitle')}</p>
             </div>
-          </div>
-
-          <div className="heading-actions-right">
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="tool-btn new-chat-btn"
-              title={language === 'ta' ? 'புதிய உரையாடல் (உள்ளீடுகளை மீட்டமைக்க)' : 'New Chat (Clear current session inputs)'}
-            >
-              <Icons.Plus size={15} />
-              <span>{t('newChat', 'New Chat')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/characters')}
-              className="tool-btn"
-              title="Browse Characters Library"
-            >
-              <Icons.Users />
-              <span>{t('characters')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/image-to-video')}
-              className="tool-btn"
-              title="Switch to Image to Video"
-            >
-              <Icons.Image />
-              <span>{t('imageToVideo')}</span>
-            </button>
           </div>
         </div>
       </div>
@@ -1059,8 +963,9 @@ export default function PromptToVideoPage() {
           {/* RIGHT COLUMN: Video Studio / Generated Output Panel with Slide-in animation */}
           <div className="studio-output-panel slide-in-from-right" ref={previewSectionRef}>
             {isGenerating ? (
-              <div className="studio-generating-card">
-                <TamilParticleOrb
+              <div className="studio-generating-card composer-generating-view">
+                <DotMatrixWaveCanvas
+                  isGenerating={true}
                   progressPercent={progressPercent}
                   progressStatus={progressStatus}
                   promptSummary={promptText}
@@ -1089,6 +994,23 @@ export default function PromptToVideoPage() {
       )}
 
       {/* Save to History Modal Dialog */}
+      {/* Modern Google Flow Inspired Character Reference Panel */}
+      <CharacterReferencePanel
+        isOpen={isCharPickerOpen}
+        onClose={() => setIsCharPickerOpen(false)}
+        onConfirmAddToPrompt={() => {
+          setIsCharPickerOpen(false);
+          if (selectedCharacters.length > 0) {
+            showToast(
+              language === 'ta'
+                ? 'கதாபாத்திரக் குறிப்புகள் பிராம்ட்டில் சேர்க்கப்பட்டன'
+                : 'Character references active in prompt',
+              'Check'
+            );
+          }
+        }}
+      />
+
       <SaveVideoModal
         isOpen={isSaveModalOpen}
         defaultName={defaultSaveName}

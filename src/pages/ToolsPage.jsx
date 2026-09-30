@@ -9,7 +9,7 @@ export default function ToolsPage() {
     {
       title: 'Prompt to Video Studio',
       desc: 'Transform written descriptions into high-definition neural video loops.',
-      icon: <Icons.Sparkles />,
+      icon: <Icons.Film />,
       route: '/prompt-to-video',
       colorClass: 'icon-box-blue'
     },

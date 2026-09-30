@@ -1,0 +1,209 @@
+/* Container and Wrapper */
+.composer-generating-view {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  overflow: hidden;
+  border-radius: inherit;
+  min-height: 380px;
+}
+
+.dot-matrix-wave-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot-matrix-wave-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* Dynamic Top Status Overlay */
+.dot-matrix-info-overlay {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+.dot-matrix-status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 650;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .dot-matrix-status-text,
+.dark .dot-matrix-status-text,
+body.dark-mode .dot-matrix-status-text {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.dot-matrix-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: dotMatrixPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes dotMatrixPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.dot-matrix-prompt-chip {
+  padding: 4px 14px;
+  border-radius: 8px;
+  background: rgba(241, 245, 249, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  color: #475569;
+  font-size: 0.78rem;
+  font-style: italic;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .dot-matrix-prompt-chip,
+.dark .dot-matrix-prompt-chip,
+body.dark-mode .dot-matrix-prompt-chip {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+/* Glassmorphism Progress Pill Badge */
+.dot-matrix-progress-badge {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.96)),
+    linear-gradient(135deg, #ec4899 0%, #3b82f6 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 4px 24px -2px rgba(236, 72, 153, 0.35), 0 2px 12px rgba(59, 130, 246, 0.25);
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 750;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 10;
+  animation: progressPillPulseCenter 2.4s ease-in-out infinite alternate;
+}
+
+/* Dark Mode */
+[data-theme="dark"] .dot-matrix-progress-badge,
+.dark .dot-matrix-progress-badge,
+body.dark-mode .dot-matrix-progress-badge {
+  background-image: linear-gradient(rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.92)),
+    linear-gradient(135deg, #ec4899 0%, #3b82f6 100%);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 16px rgba(236, 72, 153, 0.3);
+  color: #f8fafc;
+}
+
+@keyframes progressPillPulseCenter {
+  0% {
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 4px 18px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(59, 130, 246, 0.2);
+  }
+  100% {
+    transform: translateX(-50%) scale(1.03);
+    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.35), 0 2px 12px rgba(236, 72, 153, 0.3);
+  }
+}
+
+/* Cancel Action Button */
+.dot-matrix-cancel-btn {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.76rem;
+  padding: 4px 14px;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  border-radius: 9999px;
+  cursor: pointer;
+  z-index: 12;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .dot-matrix-cancel-btn,
+.dark .dot-matrix-cancel-btn,
+body.dark-mode .dot-matrix-cancel-btn {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.dot-matrix-cancel-btn:hover {
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.12);
+}
