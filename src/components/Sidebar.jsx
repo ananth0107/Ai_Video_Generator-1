@@ -75,14 +75,12 @@ export default function Sidebar({ isMobileOpen = false, onCloseMobile = () => {}
   const handlePromptToVideoNav = () => {
     navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
     window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'prompt-to-video' } }));
-    window.dispatchEvent(new CustomEvent('new-chat-prompt'));
     onCloseMobile();
   };
 
   const handleImageToVideoNav = () => {
     navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
     window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'image-to-video' } }));
-    window.dispatchEvent(new CustomEvent('new-chat-image'));
     onCloseMobile();
   };
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Icons } from '../components/Icons';
 
 const ToastContext = createContext({
@@ -7,133 +7,202 @@ const ToastContext = createContext({
   clearAllToasts: () => {}
 });
 
+function ToastItem({ toast, onDismiss }) {
+  const [isDismissing, setIsDismissing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(100);
+  const [isPulsing, setIsPulsing] = useState(false);
+
+  const duration = toast.duration || 3500;
+  const remainingTimeRef = useRef(duration);
+  const startTimeRef = useRef(Date.now());
+  const timerRef = useRef(null);
+
+  const ToastIcon = Icons[toast.icon] || (
+    toast.category === 'error' ? Icons.X :
+    toast.category === 'warning' ? Icons.AlertTriangle :
+    toast.category === 'info' ? Icons.Zap :
+    Icons.Check
+  );
+
+  const handleDismiss = useCallback(() => {
+    if (isDismissing) return;
+    setIsDismissing(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+    }, 240);
+  }, [isDismissing, onDismiss, toast.id]);
+
+  // Handle re-trigger pulse & reset timer
+  useEffect(() => {
+    if (toast.pulseCount > 0) {
+      setIsPulsing(true);
+      remainingTimeRef.current = duration;
+      startTimeRef.current = Date.now();
+      setProgress(100);
+      const timer = setTimeout(() => setIsPulsing(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.pulseCount, duration]);
+
+  // Timer loop with pause on hover
+  useEffect(() => {
+    if (isDismissing) return;
+
+    if (isPaused) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    startTimeRef.current = Date.now();
+    const startRemaining = remainingTimeRef.current;
+    const intervalMs = 25;
+
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const currentRemaining = Math.max(0, startRemaining - elapsed);
+      remainingTimeRef.current = currentRemaining;
+
+      const pct = (currentRemaining / duration) * 100;
+      setProgress(pct);
+
+      if (currentRemaining <= 0) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        handleDismiss();
+      }
+    }, intervalMs);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPaused, isDismissing, handleDismiss, duration]);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`toast-modern-card toast-${toast.category} ${
+        isDismissing ? 'toast-dismissing' : 'toast-entering'
+      } ${isPulsing ? 'toast-pulse' : ''}`}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {/* Category Accent Indicator (Glow line on left) */}
+      <div className={`toast-accent-line accent-${toast.category}`} />
+
+      {/* Icon Badge */}
+      <div className={`toast-icon-badge badge-${toast.category}`}>
+        <ToastIcon size={15} />
+      </div>
+
+      {/* Message Text */}
+      <div className="toast-text-wrap">
+        <span className="toast-message" title={toast.message}>
+          {toast.message}
+        </span>
+      </div>
+
+      {/* Close Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDismiss();
+        }}
+        className="toast-close-btn"
+        title="Dismiss"
+        aria-label="Dismiss notification"
+      >
+        <Icons.X size={13} />
+      </button>
+
+      {/* Animated Countdown Progress Bar at bottom */}
+      <div className="toast-progress-track">
+        <div
+          className={`toast-progress-bar progress-${toast.category}`}
+          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const [isHovered, setIsHovered] = useState(false);
-  const timersRef = useRef({});
 
-  const removeToast = useCallback((id) => {
-    if (timersRef.current[id]) {
-      clearTimeout(timersRef.current[id]);
-      delete timersRef.current[id];
-    }
+  const getToastCategory = useCallback((iconName, explicitType) => {
+    if (explicitType) return explicitType;
+    if (iconName === 'AlertTriangle') return 'warning';
+    if (iconName === 'Trash2' || iconName === 'X') return 'error';
+    if (iconName === 'Check' || iconName === 'BookmarkCheck') return 'success';
+    return 'info';
+  }, []);
+
+  const dismissToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const clearAllToasts = useCallback(() => {
-    Object.values(timersRef.current).forEach(clearTimeout);
-    timersRef.current = {};
     setToasts([]);
   }, []);
 
-  const showToast = useCallback((message, icon = 'Check') => {
-    const id = Date.now() + Math.random();
+  const showToast = useCallback((message, icon = 'Check', type = null, duration = 3500) => {
+    if (!message) return;
+    const now = Date.now();
+    const category = getToastCategory(icon, type);
+
     setToasts((prev) => {
-      const next = [...prev, { id, message, icon, createdAt: Date.now() }];
-      // Keep up to 15 in memory buffer
-      if (next.length > 15) return next.slice(next.length - 15);
-      return next;
+      // Deduplicate: check if exact same message is currently showing
+      const existingIndex = prev.findIndex((t) => t.message === message);
+      if (existingIndex !== -1) {
+        // Refresh existing toast with gentle pulse and reset duration
+        const next = [...prev];
+        next[existingIndex] = {
+          ...next[existingIndex],
+          duration,
+          pulseCount: (next[existingIndex].pulseCount || 0) + 1
+        };
+        return next;
+      }
+
+      // Cap at max 2 visible toasts to keep screen clean and prevent stacking overload
+      const trimmed = prev.length >= 2 ? prev.slice(prev.length - 1) : prev;
+
+      const newToast = {
+        id: `toast_${now}_${Math.random().toString(36).substring(2, 8)}`,
+        message,
+        icon,
+        category,
+        duration,
+        createdAt: now,
+        pulseCount: 0
+      };
+
+      return [...trimmed, newToast];
     });
-
-    const timer = setTimeout(() => {
-      removeToast(id);
-    }, 3800);
-
-    timersRef.current[id] = timer;
-  }, [removeToast]);
+  }, [getToastCategory]);
 
   const value = useMemo(
-    () => ({ showToast, dismissToast: removeToast, clearAllToasts }),
-    [showToast, removeToast, clearAllToasts]
+    () => ({ showToast, dismissToast, clearAllToasts }),
+    [showToast, dismissToast, clearAllToasts]
   );
-
-  // Reverse so newest toast is index 0 (top front of stack)
-  const reversedToasts = useMemo(() => [...toasts].reverse(), [toasts]);
-  const totalCount = toasts.length;
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {totalCount > 0 && (
-        <div
-          id="toast-container"
-          className={`toast-stack-container ${isHovered ? 'stack-expanded' : 'stack-collapsed'}`}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          aria-live="polite"
-        >
-          {reversedToasts.map((toast, index) => {
-            const ToastIcon = Icons[toast.icon] || Icons.Check;
-            const isTop = index === 0;
-
-            // Physical thickness offset & scale
-            // When collapsed, only top 3-4 cards peek out to create realistic physical deck thickness
-            const offsetStep = isHovered ? index * 54 : index * 6;
-            const scaleStep = isHovered ? 1 : Math.max(0.86, 1 - index * 0.035);
-            const opacityStep = isHovered
-              ? 1
-              : index === 0
-              ? 1
-              : index === 1
-              ? 0.9
-              : index === 2
-              ? 0.7
-              : index === 3
-              ? 0.45
-              : 0;
-
-            const zIndex = 1000 - index;
-
-            return (
-              <div
-                key={toast.id}
-                className={`toast-stacked-card ${isTop ? 'toast-top-card' : 'toast-depth-card'} ${
-                  isHovered ? 'toast-card-expanded' : ''
-                }`}
-                style={{
-                  transform: `translate3d(0, ${offsetStep}px, 0) scale(${scaleStep})`,
-                  opacity: opacityStep,
-                  zIndex,
-                  pointerEvents: isHovered || isTop ? 'auto' : 'none',
-                }}
-              >
-                {/* Edge Light Accent */}
-                <div className="toast-edge-accent" />
-
-                <div className="toast-inner-content">
-                  <div className="toast-icon-wrap">
-                    <ToastIcon size={16} />
-                  </div>
-                  <span className="toast-msg-text">{toast.message}</span>
-                </div>
-
-                {/* Overload Count Badge on Top Toast */}
-                {isTop && totalCount > 1 && (
-                  <div
-                    className="toast-overload-badge"
-                    title={`${totalCount} active messages`}
-                  >
-                    <span className="toast-badge-dot" />
-                    <span>+{totalCount - 1}</span>
-                  </div>
-                )}
-
-                {/* Dismiss Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeToast(toast.id);
-                  }}
-                  className="toast-close-btn"
-                  title="Dismiss notification"
-                  aria-label="Dismiss notification"
-                >
-                  <Icons.X size={13} />
-                </button>
-              </div>
-            );
-          })}
+      {toasts.length > 0 && (
+        <div id="toast-container" className="toast-modern-container" aria-live="polite">
+          {toasts.map((toast) => (
+            <ToastItem
+              key={toast.id}
+              toast={toast}
+              onDismiss={dismissToast}
+            />
+          ))}
         </div>
       )}
     </ToastContext.Provider>
@@ -143,5 +212,3 @@ export function ToastProvider({ children }) {
 export function useToast() {
   return useContext(ToastContext);
 }
-
-

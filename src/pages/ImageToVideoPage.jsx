@@ -103,8 +103,15 @@ export default function ImageToVideoPage() {
   const currentRequestIdRef = useRef(0);
   const fileInputRef = useRef(null);
   const previewSectionRef = useRef(null);
+  const lastNewChatTimeRef = useRef(0);
 
   const handleNewChat = useCallback((options = { showNotification: true }) => {
+    const now = Date.now();
+    if (now - lastNewChatTimeRef.current < 800) {
+      return;
+    }
+    lastNewChatTimeRef.current = now;
+
     currentRequestIdRef.current++;
     isGeneratingRef.current = false;
     setIsBlinking(true);

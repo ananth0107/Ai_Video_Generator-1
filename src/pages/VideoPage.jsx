@@ -11,13 +11,11 @@ export default function VideoPage() {
   const handlePromptToVideo = () => {
     navigate('/prompt-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
     window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'prompt-to-video' } }));
-    window.dispatchEvent(new CustomEvent('new-chat-prompt'));
   };
 
   const handleImageToVideo = () => {
     navigate('/image-to-video', { replace: true, state: { triggerBlink: true, newChat: Date.now() } });
     window.dispatchEvent(new CustomEvent('new-chat', { detail: { target: 'image-to-video' } }));
-    window.dispatchEvent(new CustomEvent('new-chat-image'));
   };
 
   return (
